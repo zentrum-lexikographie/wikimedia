@@ -1,0 +1,13 @@
+**/.git
+**/.gitignore
+**/.gitmodules
+
+.github
+
+**/.cpcache
+**/.nrepl-port
+**/.env
+
+data
+src
+wikibase/LocalSettings.php

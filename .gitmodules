@@ -1,0 +1,6 @@
+[submodule "wikibase/extensions/WikibaseLexeme"]
+	path = wikibase/extensions/WikibaseLexeme
+	url = https://gerrit.wikimedia.org/r/mediawiki/extensions/WikibaseLexeme
+[submodule "wikibase/extensions/CLDR"]
+	path = wikibase/extensions/CLDR
+	url = https://github.com/wikimedia/mediawiki-extensions-cldr.git
