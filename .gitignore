@@ -1,4 +1,7 @@
 .cpcache/
 .nrepl-port
 
+.python-version
+
+ansible/vault-password
 data/

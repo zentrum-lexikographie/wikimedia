@@ -1,0 +1,49 @@
+---
+security_ssh_permit_root_login: "yes"
+security_autoupdate_reboot: "true"
+security_autoupdate_mail_to: "root"
+
+firewall_allowed_tcp_ports:
+  - "22"
+  - "80"
+  - "443"
+
+pip_install_packages:
+  - docker
+  - passlib
+  - bcrypt
+
+certbot_create_if_missing: true
+certbot_admin_email: gregor@middell.net
+certbot_certs:
+  - domains:
+      - wb-sandbox.middell.net
+
+nginx_remove_default_vhost: true
+nginx_extra_http_options: |
+  proxy_set_header X-Real-IP $remote_addr;
+  proxy_set_header X-Scheme $scheme;
+  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+  proxy_set_header Host $http_host;
+  proxy_set_header Upgrade $http_upgrade;
+  proxy_set_header Connection "upgrade";
+
+nginx_upstreams:
+  - name: wikibase
+    servers: ["localhost:8080"]
+
+nginx_vhosts:
+  - listen: "80 default_server"
+    server_name: "wb-sandbox.middell.net"
+    filename: "wb-sandbox.middell.net.conf"
+    return: "301 https://wb-sandbox.middell.net$request_uri"
+  - listen: "443 ssl default_server"
+    server_name: "wb-sandbox.middell.net"
+    filename: "wb-sandbox.middell.net-ssl.conf"
+    root: "/var/www"
+    extra_parameters: |
+      ssl_certificate "/etc/letsencrypt/live/wb-sandbox.middell.net/fullchain.pem";
+      ssl_certificate_key "/etc/letsencrypt/live/wb-sandbox.middell.net/privkey.pem";
+      location / {
+        proxy_pass http://wikibase;
+      }

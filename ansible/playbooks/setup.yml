@@ -1,0 +1,14 @@
+---
+- hosts: wb_sandbox
+  pre_tasks:
+    - name: Update package cache
+      apt:
+        update_cache: yes
+  roles:
+    - geerlingguy.security
+    - geerlingguy.firewall
+    - geerlingguy.git
+    - geerlingguy.pip
+    - geerlingguy.docker
+    - geerlingguy.certbot
+    - geerlingguy.nginx

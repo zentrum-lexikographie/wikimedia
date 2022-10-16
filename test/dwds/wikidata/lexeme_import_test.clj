@@ -1,6 +1,7 @@
 (ns dwds.wikidata.lexeme-import-test
   (:require
    [clojure.test :refer [deftest is use-fixtures]]
+   [dwds.wikidata.db :as db]
    [dwds.wikidata.entity :as entity]
    [dwds.wikidata.fixture :as fixture]
    [dwds.wikidata.lex :as lex]
@@ -20,5 +21,5 @@
 (deftest test-wb-import
   (is @(fixture/with-test-wb-login
          (fn [config]
-           (->> (lexemes (fixture/test-wb-vocab))
+           (->> (lexemes (db/query-vocab!))
                 (entity/import! config))))))

@@ -1,0 +1,7 @@
+wb_sandbox:
+  hosts:
+    wb-sandbox.middell.net:
+  vars:
+    ansible_user: root
+    ansible_python_interpreter: /usr/bin/python3
+    pip_package: python3-pip
