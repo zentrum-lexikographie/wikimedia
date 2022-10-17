@@ -3,5 +3,7 @@
 
 .python-version
 
+*.temp
+
 ansible/vault-password
 data/
