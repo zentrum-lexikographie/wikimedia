@@ -1,5 +1,6 @@
 (ns dwds.wikidata.db
   (:require
+   [dwds.wikidata.env :as env]
    [dwds.wikidata.lex :as lex]
    [honey.sql :as sql]
    [next.jdbc :as jdbc]
@@ -7,10 +8,10 @@
 
 (def spec
   {:dbtype         "mysql"
-   :host           "localhost"
-   :dbname         "wikibase"
-   :user           "wikibase"
-   :password       "wikibase"
+   :host           (env/get-var "WIKIBASE_DB_HOST" "localhost")
+   :dbname         (env/get-var "WIKIBASE_DB_NAME" "wikibase")
+   :user           (env/get-var "WIKIBASE_DB_USER" "wikibase")
+   :password       (env/get-var "WIKIBASE_DB_PASSWORD" "wikibase")
    :serverTimezone "UTC"})
 
 (defn query!

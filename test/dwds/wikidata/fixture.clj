@@ -7,10 +7,12 @@
    [dwds.wikidata.wdqs :as wdqs]
    [julesratte.auth :as mw.auth]
    [julesratte.client :as mw.client]
-   [manifold.deferred :as d]))
+   [manifold.deferred :as d]
+   [dwds.wikidata.env :as env]))
 
 (def wikidata-client-config
-  (mw.client/config-for-endpoint (mw.client/endpoint-url "www.wikidata.org")))
+  (mw.client/config-for-endpoint
+   (mw.client/endpoint-url "www.wikidata.org")))
 
 (defn extract-vocab-entities
   [entities]
@@ -20,18 +22,21 @@
   [ids]
   @(d/chain (entity/get! wikidata-client-config ids) extract-vocab-entities))
 
-(def test-wb-client-config
-  (->
-   (mw.client/config-for-endpoint
-    (mw.client/endpoint-url "http" "localhost")
-    (mw.client/create-session-client))
-   (assoc :warn->error? false)))
+(def test-wb-client-url
+  (env/get-var "WIKIBASE_API_URL" (mw.client/endpoint-url "http" "localhost")))
 
 (def test-wb-client-user
-  "Admin")
+  (env/get-var "WIKIBASE_API_USER" "Admin"))
 
 (def test-wb-client-password
-  "secret1234")
+  (env/get-var "WIKIBASE_API_PASSWORD" "secret1234"))
+
+(def test-wb-client-config
+  (->
+   test-wb-client-url
+   (mw.client/config-for-endpoint (mw.client/create-session-client))
+   (assoc :warn->error? false)))
+
 
 (defn with-test-wb-login
   [f]
@@ -62,4 +67,11 @@
 
 (defn lex-lemmata
   []
-  (take 10 (random-sample 0.1 (lex/lemmata lex-dir))))
+  (->> (lex/lemmata lex-dir)
+       #_(filter (comp (partial = "verb") :pos))
+       #_(random-sample 0.1)
+       (take 10)))
+
+(comment
+  @(entity/get-one! test-wb-client-config "L92"))
+
