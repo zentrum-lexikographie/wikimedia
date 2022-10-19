@@ -48,8 +48,7 @@
 
 (defn import-test-wb-vocab!
   []
-  (let [vocab-ids (wdqs/query-vocab! lex/vocab)
-        vocab-ids (map (partial str "Q") (vals vocab-ids))
+  (let [vocab-ids (map (partial str "Q") (vals wdqs/vocab))
         entities  (query-vocab-entities! vocab-ids)]
     @(with-test-wb-login (fn [config] (entity/import! config entities)))))
 
@@ -62,16 +61,24 @@
   (ensure-test-wb-vocab!)
   (f))
 
+(def verb-xf
+  (comp (filter (comp (partial = "verb") :pos))
+        (take 10)))
+
+(def plt-xf
+  (comp (filter :plt?)
+        (take 5)))
+
+(def random-xf
+  (comp (take 10)))
+
 (def lex-dir
   (io/file "../zdl-wb"))
 
 (defn lex-lemmata
   []
-  (->> (lex/lemmata lex-dir)
-       #_(filter (comp (partial = "verb") :pos))
-       #_(random-sample 0.1)
-       (take 10)))
-
-(comment
-  @(entity/get-one! test-wb-client-config "L92"))
-
+  (let [lemmata (lex/lemmata lex-dir)
+        verbs (sequence verb-xf lemmata)
+        plts  (sequence plt-xf lemmata)
+        rands (sequence random-xf lemmata)]
+    (into [] (concat verbs plts rands))))

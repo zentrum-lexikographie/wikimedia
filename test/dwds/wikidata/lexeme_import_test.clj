@@ -4,7 +4,6 @@
    [dwds.wikidata.db :as db]
    [dwds.wikidata.entity :as entity]
    [dwds.wikidata.fixture :as fixture]
-   [dwds.wikidata.lex :as lex]
    [dwds.wikidata.lexeme :as lexeme]
    [dwds.wikidata.wdqs :as wdqs]
    [julesratte.client :as mw.client]))
@@ -16,8 +15,7 @@
   (lexeme/lex->wb vocab (fixture/lex-lemmata)))
 
 (deftest conversion
-  (is (every? (comp #{"lexeme"} :type)
-              (lexemes (wdqs/query-vocab! lex/vocab)))))
+  (is (every? (comp #{"lexeme"} :type) (lexemes wdqs/vocab))))
 
 (deftest test-wb-import
   (is @(fixture/with-test-wb-login

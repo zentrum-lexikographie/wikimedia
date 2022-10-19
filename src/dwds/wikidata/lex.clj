@@ -15,6 +15,9 @@
 (def source
   "DWDS-Wörterbuch")
 
+(def plurale-tantum
+  "plurale tantum")
+
 (def parts-of-speech
   {"Adjektiv"               "adjective"
    "Adverb"                 "adverb"
@@ -55,7 +58,7 @@
 
 (def vocab
   (->> (mapcat vals [parts-of-speech genera])
-       (concat [lang source])
+       (concat [lang source plurale-tantum])
        (into (sorted-set))))
 
 (defn xml-file?
@@ -96,10 +99,12 @@
 (defn extract-lemma-forms
   [form]
   (when-let [grammar (dx.zip/xml1-> form ::xdwds/Grammatik)]
-    (let [pos    (dx.zip/xml1-> grammar ::xdwds/Wortklasse text)
-          pos    (get parts-of-speech pos)
-          genera (dx.zip/xml-> grammar ::xdwds/Genus text)
-          genera (into (sorted-set) genus-xf genera)]
+    (let [pos      (dx.zip/xml1-> grammar ::xdwds/Wortklasse text)
+          pos      (get parts-of-speech pos)
+          num-pref (dx.zip/xml1-> grammar ::xdwds/Numeruspraeferenz text)
+          plt?     (= "nur im Plural" num-pref)
+          genera   (dx.zip/xml-> grammar ::xdwds/Genus text)
+          genera   (into (sorted-set) genus-xf genera)]
       (when pos
         (let [reprs (dx.zip/xml-> form ::xdwds/Schreibung
                                   valid-repr? repr->map)
@@ -107,6 +112,7 @@
               reprs (seq (rest reprs))]
           (list
            (cond-> (-> frepr assoc-uri (assoc :pos pos))
+             num-pref     (assoc :plt? plt?)
              reprs        (assoc :reprs (map :lemma reprs))
              (seq genera) (assoc :genera genera))))))))
 
@@ -146,4 +152,5 @@
 
 (comment
   (count (distinct (map :lemma (filter :hidx (lemmata "../zdl-wb")))))
+  (take 5 (filter :plt? (lemmata "../zdl-wb")))
   (time (count (lemmata "../zdl-wb"))))

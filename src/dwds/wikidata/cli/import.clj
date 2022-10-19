@@ -91,7 +91,7 @@
 
 (defn get-vocab!
   [{{:keys [host]} :base-url}]
-  (if (= "localhost" host) (db/query-vocab!) (wdqs/query-vocab! lex/vocab)))
+  (if (= "localhost" host) (db/query-vocab!) wdqs/vocab))
 
 (defn lexemes-csv->set
   [f]
@@ -115,6 +115,3 @@
       (catch Throwable t
         (log/error t "Error while importing lexemes")
         (exit! 2)))))
-
-;; $ clojure -M -m dwds.wikidata.cli.import -d --lexemes lexemes.csv --source ../zdl-wb
-;; 2022-10-14T15:15:35.390Z textmaschine TRACE [dwds.wikidata.cli.import:98] - Lemmata to import: 202,008

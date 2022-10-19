@@ -3,7 +3,8 @@
   (:require
    [clojure.string :as str]
    [hato.client :as http]
-   [jsonista.core :as json]))
+   [jsonista.core :as json]
+   [dwds.wikidata.lex :as lex]))
 
 (def wdqs-endpoint
   "https://query.wikidata.org/bigdata/namespace/wdq/sparql")
@@ -38,7 +39,8 @@
       "PREFIX wdt: <http://www.wikidata.org/prop/direct/>"
       ""
       "SELECT ?label ?item WHERE {"
-      "?item wdt:P31 ?type {" label-clauses "}"
+      "?item wdt:P31 ?type "
+      "{" label-clauses "}"
       "FILTER (?type IN (wd:Q34770, wd:Q82042, wd:Q162378, wd:Q82042, wd:Q3327521))"
       "FILTER (LANG(?label) = \"en\")"
       "}"]
@@ -59,16 +61,46 @@
    (into (sorted-map))))
 
 (comment
-  (query-vocab! #{"German" "Digitales Wörterbuch der deutschen Sprache"
-                  "adjective" "adverb" "noun" "verb"
-                  "feminine" "masculine" "neuter"})
-  ;; => {"Digitales Wörterbuch der deutschen Sprache" 1225026,
+  (query-vocab! lex/vocab)
+  ;; => {"DWDS-Wörterbuch" 108696977,
   ;;     "German" 188,
   ;;     "adjective" 34698,
   ;;     "adverb" 380057,
+  ;;     "article" 103184,
+  ;;     "conjunction" 36484,
+  ;;     "demonstrative pronoun" 34793275,
   ;;     "feminine" 1775415,
+  ;;     "interjection" 83034,
+  ;;     "interrogative pronoun" 54310231,
   ;;     "masculine" 499327,
   ;;     "neuter" 1775461,
   ;;     "noun" 1084,
+  ;;     "numeral" 63116,
+  ;;     "possessive pronoun" 1502460,
+  ;;     "preposition" 4833830,
+  ;;     "pronoun" 36224,
+  ;;     "relative pronoun" 1050744,
   ;;     "verb" 24905}
   )
+
+(def vocab
+  {"DWDS-Wörterbuch"       108696977,
+   "German"                188,
+   "adjective"             34698,
+   "adverb"                380057,
+   "article"               103184,
+   "conjunction"           36484,
+   "demonstrative pronoun" 34793275,
+   "feminine"              1775415,
+   "interjection"          83034,
+   "interrogative pronoun" 54310231,
+   "masculine"             499327,
+   "neuter"                1775461,
+   "noun"                  1084,
+   "numeral"               63116,
+   "possessive pronoun"    1502460,
+   "preposition"           4833830,
+   "pronoun"               36224,
+   "relative pronoun"      1050744,
+   "verb"                  24905
+   "plurale tantum"        138246})
