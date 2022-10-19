@@ -13,7 +13,7 @@
   "German")
 
 (def source
-  "Digitales Wörterbuch der deutschen Sprache")
+  "DWDS-Wörterbuch")
 
 (def parts-of-speech
   {"Adjektiv"               "adjective"

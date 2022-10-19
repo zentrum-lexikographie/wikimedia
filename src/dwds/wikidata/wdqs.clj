@@ -39,7 +39,7 @@
       ""
       "SELECT ?label ?item WHERE {"
       "?item wdt:P31 ?type {" label-clauses "}"
-      "FILTER (?type IN (wd:Q34770, wd:Q82042, wd:Q162378, wd:Q82042, wd:Q170584))"
+      "FILTER (?type IN (wd:Q34770, wd:Q82042, wd:Q162378, wd:Q82042, wd:Q3327521))"
       "FILTER (LANG(?label) = \"en\")"
       "}"]
      (str/join \newline))))
