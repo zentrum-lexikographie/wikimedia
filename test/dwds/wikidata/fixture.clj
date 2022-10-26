@@ -5,6 +5,7 @@
    [dwds.wikidata.entity :as entity]
    [dwds.wikidata.lex :as lex]
    [dwds.wikidata.wdqs :as wdqs]
+   [dwds.wikidata.wikipedia-corpus :as wikipedia-corpus]
    [julesratte.auth :as mw.auth]
    [julesratte.client :as mw.client]
    [manifold.deferred :as d]
@@ -82,3 +83,22 @@
         plts  (sequence plt-xf lemmata)
         rands (sequence random-xf lemmata)]
     (into [] (concat verbs plts rands))))
+
+
+(def wikipedia-tokens-dump
+  (doto (io/file "test-data" "wikipedia-de-tokens.edn")
+    (.. (getParentFile) (mkdirs))))
+
+(defn get-wikipedia-tokens
+  []
+  (read-string (slurp wikipedia-tokens-dump)))
+
+(defn ensure-wikipedia-tokens!
+  []
+  (when-not (.isFile wikipedia-tokens-dump)
+    (spit wikipedia-tokens-dump (pr-str (wikipedia-corpus/tokens)))))
+
+(defn wikipedia-tokens
+  [f]
+  (ensure-wikipedia-tokens!)
+  (f))
