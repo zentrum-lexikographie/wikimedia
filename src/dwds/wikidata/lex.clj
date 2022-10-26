@@ -21,34 +21,34 @@
 (def parts-of-speech
   {"Adjektiv"               "adjective"
    "Adverb"                 "adverb"
-   "Affix"                  "affix"
-   "bestimmter Artikel"     "article"
-   "Bruchzahl"              "numeral"
-   "Demonstrativpronomen"   "demonstrative pronoun"
+;;   "Affix"                  "affix"
+;;   "bestimmter Artikel"     "article"
+;;   "Bruchzahl"              "numeral"
+;;   "Demonstrativpronomen"   "demonstrative pronoun"
    "Eigenname"              "proper noun"
-   "Imperativ"              "verb"
-   "Indefinitpronomen"      "indefinite pronoun"
+;;   "Imperativ"              "verb"
+;;   "Indefinitpronomen"      "indefinite pronoun"
    "Interjektion"           "interjection"
-   "Interrogativpronomen"   "interrogative pronoun"
-   "Kardinalzahl"           "numeral"
-   "Komparativ"             "adjective"
+;;   "Interrogativpronomen"   "interrogative pronoun"
+;;   "Kardinalzahl"           "numeral"
+;;   "Komparativ"             "adjective"
    "Konjunktion"            "conjunction"
-   "Mehrwortausdruck"       "idiom"
-   "Ordinalzahl"            "numeral"
+;;   "Mehrwortausdruck"       "idiom"
+;;   "Ordinalzahl"            "numeral"
    "partizipiales Adjektiv" "adjective"
    "partizipiales Adverb"   "adverb"
-   "Partikel"               "interjection"
-   "Personalpronomen"       "personal pronoun"
-   "Possessivpronomen"      "possessive pronoun"
+;;   "Partikel"               "interjection"
+;;   "Personalpronomen"       "personal pronoun"
+;;   "Possessivpronomen"      "possessive pronoun"
    "Präposition"            "preposition"
    "Präposition + Artikel"  "contraction"
-   "Pronomen"               "pronoun"
-   "Pronominaladverb"       "pronominal adverb"
-   "Reflexivpronomen"       "reflexive pronoun"
-   "Relativpronomen"        "relative pronoun"
-   "reziprokes Pronomen"    "pronoun"
+;;   "Pronomen"               "pronoun"
+;;   "Pronominaladverb"       "pronominal adverb"
+;;   "Reflexivpronomen"       "reflexive pronoun"
+;;   "Relativpronomen"        "relative pronoun"
+;;   "reziprokes Pronomen"    "pronoun"
    "Substantiv"             "noun"
-   "Superlativ"             "adjective"
+;;   "Superlativ"             "adjective"
    "Verb"                   "verb"})
 
 (def genera
@@ -72,7 +72,7 @@
 (dx/alias-uri :xdwds "http://www.dwds.de/ns/1.0")
 
 (def text
-  (comp not-empty str/trim dx.zip/text))
+  (comp not-empty str/trim #(str/replace % #"[\ \s]+" " ") dx.zip/text))
 
 (def valid-repr?
   "Predicate of written representation with valid spelling."
@@ -109,10 +109,12 @@
         (let [reprs (dx.zip/xml-> form ::xdwds/Schreibung
                                   valid-repr? repr->map)
               frepr (first reprs)
-              reprs (seq (rest reprs))]
+              reprs (seq (rest reprs))
+              ipa   (dx.zip/xml1-> form ::xdwds/Aussprache (dx.zip/attr :IPA))]
           (list
            (cond-> (-> frepr assoc-uri (assoc :pos pos))
              num-pref     (assoc :plt? plt?)
+             ipa          (assoc :ipa ipa)
              reprs        (assoc :reprs (map :lemma reprs))
              (seq genera) (assoc :genera genera))))))))
 
@@ -128,6 +130,10 @@
            (vswap! seen assoc k true)
            (rf result m)))))))
 
+(defn valid-wd-lemma?
+  [{:keys [lemma]}]
+  (and (re-find #"[a-zA-Z]" lemma) (not (str/includes? lemma "’"))))
+
 (def lex-db-parse-xf
   (comp
    (filter xml-file?)
@@ -137,6 +143,8 @@
    (filter (dx.zip/attr= :Status "Red-f"))
    (mapcat #(dx.zip/xml-> % ::xdwds/Formangabe))
    (mapcat extract-lemma-forms)
+   (filter :lemma)
+   (filter valid-wd-lemma?)
    distinct-lemma-xf))
 
 (defn lemmata
@@ -150,7 +158,16 @@
   [{:keys [uri]}]
   (str (uri/join base-url uri)))
 
+(def lemma-re
+  #"^[0-9a-zA-ZÄÉÖÜßàáâãäåçèéêîñóôöøùúûüŒœř\₀\₂'…\!\,\-\.\?\ ]+$")
+
 (comment
   (count (distinct (map :lemma (filter :hidx (lemmata "../zdl-wb")))))
-  (take 5 (filter :plt? (lemmata "../zdl-wb")))
+
+  (into (sorted-set) (mapcat (comp seq :lemma) (lemmata "../zdl-wb")))
+  (take 10 (filter (comp (partial re-seq lemma-re) :lemma)
+                   (lemmata "../zdl-wb")))
+  (count (filter (comp #(str/includes? % "'") :lemma) (lemmata "../zdl-wb")))
+
+  (count (filter :ipa (lemmata "../zdl-wb")))
   (time (count (lemmata "../zdl-wb"))))
