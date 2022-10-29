@@ -96,8 +96,8 @@
     (d/error-deferred (ex-info "Error while creating entity" response))
     response))
 
-(defn request-create!
-  [config {:keys [type] :as entity} csrf-token]
+(defn create!
+  [config csrf-token {:keys [type] :as entity}]
   (->
    (->> (mw.client/request-with-params
          :action "wbeditentity"
@@ -107,12 +107,6 @@
          :data (mw.client/write-json entity))
         (mw.client/request! config))
    (d/chain assert-edit-successful)))
-
-(defn create!
-  [config entity]
-  (d/chain
-   (mw.auth/query-csrf-token! config)
-   (partial request-create! config entity)))
 
 (defn get!
   [config ids]
@@ -142,8 +136,8 @@
     (cond-> results (:errors results) d/error-deferred)))
 
 (defn do-import!
-  [wb-client-config results entity]
-  (-> (create! wb-client-config entity)
+  [wb-client-config results csrf-token entity]
+  (-> (create! wb-client-config csrf-token entity)
       (d/chain (partial handle-import-success results))
       (d/catch (partial handle-import-error results))))
 
@@ -152,5 +146,6 @@
   (let [results    (atom {})
         do-import! (partial do-import! wb-client-config results)
         entities   (s/->source entities)]
-    (-> (s/consume-async do-import! entities)
+    (-> (mw.auth/query-csrf-token! wb-client-config)
+        (d/chain #(s/consume-async (partial do-import! %) entities))
         (d/chain (partial handle-import-results results)))))

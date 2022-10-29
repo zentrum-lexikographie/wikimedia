@@ -3,7 +3,8 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [hato.client :as http]
-   [jsonista.core :as json])
+   [jsonista.core :as json]
+   [taoensso.timbre :as log])
   (:import
    (java.util.zip GZIPInputStream)))
 
@@ -21,12 +22,19 @@
   [s]
   (json/read-value s json/keyword-keys-object-mapper))
 
+(defn log-lexeme
+  [i lexeme]
+  (when (zero? (mod (inc i) 1000))
+    (log/tracef "Parsed lexeme from dump #%,7d" (inc i)))
+  lexeme)
+
 (def parse-lexeme-dump-xf
   (comp
    (map str/trim)
    (filter #(< 2 (count %)))
    (map #(str/replace % #",$" ""))
-   (map read-json)))
+   (map read-json)
+   (map-indexed log-lexeme)))
 
 (defn lexemes
   ([]

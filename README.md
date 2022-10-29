@@ -15,14 +15,16 @@ Export a digest of existing WikiData lexemes (based on a [current
 dump](https://dumps.wikimedia.org/wikidatawiki/entities/latest-lexemes.json.gz)):
 
 ```
-$ clojure -M -m dwds.wikidata.cli.lexemes >lexemes.csv
+$ clojure -M:existing >lexemes.csv
 ```
 
 ```
-$ clojure -M -m dwds.wikidata.cli.import\
-    --debug\
-    --lexemes lexemes.csv\
-    --source ../zdl-wb
+$ clojure -M:import\
+    -l 1\
+    -e lexemes.csv\
+    -e lexemes.wikidata.csv\
+    -s ../zdl-wb\
+    >>lexemes.wikidata.csv 
 ```
 
 ## Testing
