@@ -5,16 +5,35 @@
    [hato.client :as http]
    [taoensso.timbre :as log])
   (:import
+   (java.io FilterInputStream IOException)
    (java.util.zip GZIPInputStream)))
 
 (def de-texts-url
   "https://download.wmcloud.org/corpora/de.txt.gz")
 
+(defn de-texts-response-stream
+  "Wraps the HTTP response stream of the German corpus file.
+
+  The HTTP server reports a wrong content length, resulting in instances of
+  `EOFException` being thrown By wrapping the stream, those exceptions are
+  ignored."
+  [{response-stream :body}]
+  (let [response-stream (GZIPInputStream. response-stream)]
+    (proxy [FilterInputStream] [response-stream]
+      (read
+        ([]
+         (try (.read response-stream) (catch IOException _ -1)))
+        ([b]
+         (try (.read response-stream b) (catch IOException _ -1)))
+        ([buf off len]
+         (try (.read response-stream buf off len) (catch IOException _ -1))))
+      (close []
+        (try (.close response-stream) (catch IOException _))))))
+
 (defn de-texts-reader
   []
   (-> (http/get de-texts-url {:as :stream})
-      (get :body)
-      GZIPInputStream.
+      de-texts-response-stream
       (io/reader :encoding "UTF-8")))
 
 (defn clean-chars
@@ -38,18 +57,16 @@
 (def batch-size
   10000)
 
-(def article-count
-  (atom 0))
-
 (defn count-articles-xf
   [rf]
-  (fn
-    ([] (rf))
-    ([result] (rf result))
-    ([result article]
-     (when (zero? (mod (swap! article-count inc) batch-size))
-       (log/debugf "Wikipedia-DE/ Articles tokenized: %,10d" @article-count))
-     (rf result article))))
+  (let [article-count (atom 0)]
+    (fn
+      ([] (rf))
+      ([result] (rf result))
+      ([result article]
+       (when (zero? (mod (swap! article-count inc) batch-size))
+         (log/debugf "Wikipedia-DE/ Articles tokenized: %,10d" @article-count))
+       (rf result article)))))
 
 (def tokenizer-xf
   (comp
@@ -65,7 +82,7 @@
 (defn tokens
   []
   (with-open [de-texts (de-texts-reader)]
-    (let [articles (take 1000 (line-seq de-texts))
+    (let [articles (line-seq de-texts)
           batches  (partition-all batch-size articles)
           batches  (pmap (partial into [] tokenizer-xf) batches)
           tokens   (mapcat identity batches)
