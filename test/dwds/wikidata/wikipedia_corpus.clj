@@ -2,38 +2,22 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [hato.client :as http]
+   [dwds.wikidata.http :as http]
    [taoensso.timbre :as log])
   (:import
-   (java.io FilterInputStream IOException)
    (java.util.zip GZIPInputStream)))
 
 (def de-texts-url
   "https://download.wmcloud.org/corpora/de.txt.gz")
 
-(defn de-texts-response-stream
-  "Wraps the HTTP response stream of the German corpus file.
-
-  The HTTP server reports a wrong content length, resulting in instances of
-  `EOFException` being thrown By wrapping the stream, those exceptions are
-  ignored."
-  [{response-stream :body}]
-  (let [response-stream (GZIPInputStream. response-stream)]
-    (proxy [FilterInputStream] [response-stream]
-      (read
-        ([]
-         (try (.read response-stream) (catch IOException _ -1)))
-        ([b]
-         (try (.read response-stream b) (catch IOException _ -1)))
-        ([buf off len]
-         (try (.read response-stream buf off len) (catch IOException _ -1))))
-      (close []
-        (try (.close response-stream) (catch IOException _))))))
+(def de-texts-file-name
+  "de.wikipedia.txt.gz")
 
 (defn de-texts-reader
   []
-  (-> (http/get de-texts-url {:as :stream})
-      de-texts-response-stream
+  (-> (http/data-download! de-texts-url de-texts-file-name)
+      (io/input-stream)
+      (GZIPInputStream.)
       (io/reader :encoding "UTF-8")))
 
 (defn clean-chars

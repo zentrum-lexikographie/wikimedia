@@ -2,7 +2,7 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [hato.client :as http]
+   [dwds.wikidata.http :as http]
    [jsonista.core :as json]
    [taoensso.timbre :as log])
   (:import
@@ -11,11 +11,14 @@
 (def lexemes-dump-url
   "https://dumps.wikimedia.org/wikidatawiki/entities/latest-lexemes.json.gz")
 
+(def lexemes-dump-file-name
+  "latest-lexemes.json.gz")
+
 (defn lexemes-dump-reader
   []
-  (-> (http/get lexemes-dump-url {:as :stream})
-      (get :body)
-      GZIPInputStream.
+  (-> (http/data-download! lexemes-dump-url lexemes-dump-file-name)
+      (io/input-stream)
+      (GZIPInputStream.)
       (io/reader :encoding "UTF-8")))
 
 (defn read-json
@@ -25,7 +28,7 @@
 (defn log-lexeme
   [i lexeme]
   (when (zero? (mod (inc i) 1000))
-    (log/tracef "Parsed lexeme from dump #%,7d" (inc i)))
+    (log/tracef "Parsed lexeme from dump #%,9d" (inc i)))
   lexeme)
 
 (def parse-lexeme-dump-xf
