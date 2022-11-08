@@ -24,13 +24,13 @@
   @(d/chain (entity/get! wikidata-client-config ids) extract-vocab-entities))
 
 (def test-wb-client-url
-  (env/get-var "WIKIBASE_API_URL" (mw.client/endpoint-url "http" "localhost")))
+  (mw.client/endpoint-url "http" "localhost"))
 
 (def test-wb-client-user
-  (env/get-var "WIKIBASE_API_USER" "Admin"))
+  "Admin")
 
 (def test-wb-client-password
-  (env/get-var "WIKIBASE_API_PASSWORD" "secret1234"))
+  "secret1234")
 
 (def test-wb-client-config
   (->
@@ -70,6 +70,10 @@
   (comp (filter :plt?)
         (take 5)))
 
+(def genera-xf
+  (comp (filter (comp (partial < 1) count :genera))
+        (take 5)))
+
 (def random-xf
   (comp (take 10)))
 
@@ -79,10 +83,11 @@
 (defn lex-lemmata
   []
   (let [lemmata (lex/lemmata lex-dir)
-        verbs (sequence verb-xf lemmata)
-        plts  (sequence plt-xf lemmata)
-        rands (sequence random-xf lemmata)]
-    (into [] (concat verbs plts rands))))
+        verbs   (sequence verb-xf lemmata)
+        plts    (sequence plt-xf lemmata)
+        genera  (sequence genera-xf lemmata)
+        rands   (sequence random-xf lemmata)]
+    (into [] (concat verbs plts genera rands))))
 
 
 (def wikipedia-tokens-dump
