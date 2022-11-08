@@ -142,6 +142,7 @@
     (doseq [lexeme lexemes]
       (let [response (deref (entity/create! wb-config csrf-token lexeme))
             entity   (get-in response [:body :entity])]
+        (Thread/sleep (+ 500 (rand-int 1000)))
         (entity->csv-out entity)))
     (catch Throwable t
       (d/error-deferred t))))
