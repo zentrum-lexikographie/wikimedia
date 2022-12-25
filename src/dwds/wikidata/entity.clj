@@ -149,3 +149,6 @@
     (-> (mw.auth/query-csrf-token! wb-client-config)
         (d/chain #(s/consume-async (partial do-import! %) entities))
         (d/chain (partial handle-import-results results)))))
+
+(comment
+  @(get-one! (mw.client/config-for-endpoint (mw.client/endpoint-url "www.wikidata.org")) "L1026"))

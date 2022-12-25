@@ -96,27 +96,43 @@
   (->> (cond-> (uri.normalize/normalize-path lemma) hidx (str "#" hidx))
        (assoc m :uri)))
 
-(defn extract-lemma-forms
-  [form]
-  (when-let [grammar (dx.zip/xml1-> form ::xdwds/Grammatik)]
-    (let [pos      (dx.zip/xml1-> grammar ::xdwds/Wortklasse text)
-          pos      (get parts-of-speech pos)
-          num-pref (dx.zip/xml1-> grammar ::xdwds/Numeruspraeferenz text)
-          plt?     (= "nur im Plural" num-pref)
-          genera   (dx.zip/xml-> grammar ::xdwds/Genus text)
-          genera   (into (sorted-set) genus-xf genera)]
-      (when pos
-        (let [reprs (dx.zip/xml-> form ::xdwds/Schreibung
-                                  valid-repr? repr->map)
-              frepr (first reprs)
-              reprs (seq (rest reprs))
-              ipa   (dx.zip/xml1-> form ::xdwds/Aussprache (dx.zip/attr :IPA))]
-          (list
-           (cond-> (-> frepr assoc-uri (assoc :pos pos))
-             num-pref     (assoc :plt? plt?)
-             ipa          (assoc :ipa ipa)
-             reprs        (assoc :reprs (map :lemma reprs))
-             (seq genera) (assoc :genera genera))))))))
+(defn extract-forms
+  [article]
+  (for [form    (dx.zip/xml-> article ::xdwds/Formangabe)
+        :let    [ipa   (dx.zip/xml1-> form ::xdwds/Aussprache
+                                      (dx.zip/attr :IPA))
+                 main? (dx.zip/xml1-> form (dx.zip/attr :Typ))
+                 main? (= "Hauptform" main?)]
+        grammar (dx.zip/xml-> form ::xdwds/Grammatik)
+        pos     (dx.zip/xml-> grammar ::xdwds/Wortklasse text)
+        :let    [pos (get parts-of-speech pos)]
+        :when   pos
+        :let    [plt?   (dx.zip/xml1-> grammar ::xdwds/Numeruspraeferenz text)
+                 plt?   (= "nur im Plural" plt?)
+                 genera (dx.zip/xml-> grammar ::xdwds/Genus text)
+                 genera (into (sorted-set) genus-xf genera)]
+        repr    (dx.zip/xml-> form ::xdwds/Schreibung valid-repr? repr->map)]
+    (-> repr
+        (assoc :main? main?)
+        (assoc :genera genera)
+        (assoc :plt? plt?)
+        (assoc :pos pos)
+        (assoc :ipa ipa))))
+
+(defn group-by-lemma-pos
+  [forms]
+  (for [[_ forms] (group-by (juxt :lemma :hidx :pos) forms)]
+    (reduce
+     (fn [m {:keys [genera]}] (update m :genera into genera))
+     (first forms)
+     (rest forms))))
+
+(defn aggregate-forms
+  [forms]
+  (for [[_ forms] (group-by (juxt :pos :genera) forms)]
+    (let [main-form  (first (filter :main? forms))
+          rest-forms (seq  (remove #{main-form} forms))]
+      (cond-> main-form rest-forms (assoc :other rest-forms)))))
 
 (defn distinct-lemma-xf
   [rf]
@@ -134,22 +150,30 @@
   [{:keys [lemma]}]
   (and (re-find #"[a-zA-Z]" lemma) (not (str/includes? lemma "’"))))
 
-(def lex-db-parse-xf
+(def article->lemmata-xf
   (comp
-   (filter xml-file?)
-   (map parse-xml-file)
-   (map zip/xml-zip)
-   (mapcat #(dx.zip/xml-> % ::xdwds/DWDS ::xdwds/Artikel))
-   (filter (dx.zip/attr= :Status "Red-f"))
-   (mapcat #(dx.zip/xml-> % ::xdwds/Formangabe))
-   (mapcat extract-lemma-forms)
+   (mapcat (comp aggregate-forms group-by-lemma-pos extract-forms))
    (filter :lemma)
    (filter valid-wd-lemma?)
    distinct-lemma-xf))
 
+(defn parse-article-file
+  [f]
+  (let [doc (parse-xml-file f)
+        doc (zip/xml-zip doc)
+        articles (dx.zip/xml-> doc ::xdwds/DWDS ::xdwds/Artikel)
+        articles (filter (dx.zip/attr= :Status "Red-f") articles)]
+    (sequence
+     (comp article->lemmata-xf (map #(assoc % :file f)))
+     articles)))
+
 (defn lemmata
   [articles-dir]
-  (sequence lex-db-parse-xf (file-seq (io/file articles-dir))))
+  (sequence
+   (comp
+    (filter xml-file?)
+    (mapcat parse-article-file))
+   (file-seq (io/file articles-dir))))
 
 (def base-url
   (uri/uri "https://www.dwds.de/wb/"))
@@ -170,4 +194,6 @@
   (count (filter (comp #(str/includes? % "'") :lemma) (lemmata "../zdl-wb")))
 
   (count (filter :ipa (lemmata "../zdl-wb")))
+  (sort-by second (frequencies (map :pos (lemmata "../zdl-wb"))))
+  (take 10 (filter :other (lemmata "../../data/zdl/wb")))
   (time (count (lemmata "../zdl-wb"))))

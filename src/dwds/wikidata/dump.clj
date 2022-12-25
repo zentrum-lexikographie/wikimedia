@@ -36,8 +36,13 @@
    (map str/trim)
    (filter #(< 2 (count %)))
    (map #(str/replace % #",$" ""))
-   (map read-json)
+   (partition-all 32)
+   (mapcat (partial pmap read-json))
    (map-indexed log-lexeme)))
+
+(defn parse-lexemes
+  [rdr]
+  (sequence parse-lexeme-dump-xf (line-seq rdr)))
 
 (defn lexemes
   ([]
@@ -45,3 +50,7 @@
   ([xf]
    (with-open [rdr (lexemes-dump-reader)]
      (into [] (comp parse-lexeme-dump-xf xf) (line-seq rdr)))))
+
+(comment
+  (with-open [r (lexemes-dump-reader)]
+    (into [] (take 2) (parse-lexemes r))))

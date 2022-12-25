@@ -4,6 +4,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.tools.cli :refer [parse-opts]]
+   [dwds.wikidata.csv :refer [lexeme->csv]]
    [dwds.wikidata.db :as db]
    [dwds.wikidata.entity :as entity]
    [dwds.wikidata.lex :as lex]
@@ -21,17 +22,15 @@
   [["-b" "--base-url URL"
     :desc "Wikibase Action API URL"
     :parse-fn uri/uri
-    :default (uri/uri (env/get-var
-                       "WIKIBASE_API_URL"
-                       (mw.client/endpoint-url "http" "localhost")))
+    :default env/api-uri
     :default-desc "$WIKIBASE_API_URL"]
    ["-u" "--user WIKIBASE_USER"
     :desc "Wikibase Login/Bot user"
-    :default (env/get-var "WIKIBASE_API_USER" "Admin")
+    :default env/api-user
     :default-desc "$WIKIBASE_API_USER"]
    ["-p" "--password WIKIBASE_PASSWORD"
     :desc "Wikibase Login/Bot password"
-    :default (env/get-var "WIKIBASE_API_PASSWORD" "secret1234")
+    :default env/api-password
     :default-desc "$WIKIBASE_API_PASSWORD"]
    ["-l" "--limit MAX_LEXEMES"
     :desc "Maximum number of lexemes to import"
@@ -47,6 +46,8 @@
     :desc "directory containing DWDS dictionary articles"]
    ["-d" "--debug"
     :desc "print debugging information"]
+   ["-n" "--dry-run"
+    :desc "do a test/dry run, not importing any data"]
    ["-h" "--help"]])
 
 (defn usage
@@ -114,6 +115,10 @@
   (with-open [r (io/reader f :encoding "UTF-8")]
     (into #{} (map (fn [[_ _ lemma]] lemma)) (csv/read-csv r))))
 
+(defn exists?
+  [exists? {:keys [lemma other]}]
+  (or (exists? lemma) (some exists? (map :lemma other))))
+
 (defn read-existing
   [{{:keys [existing]} :options}]
   (let [existing (into (sorted-set) (mapcat lexemes-csv->set) existing)]
@@ -149,17 +154,21 @@
 
 (defn -main
   [& args]
-  (let [args   (parse-args args)
-        trace? (get-in args [:options :debug])]
+  (let [args     (parse-args args)
+        trace?   (get-in args [:options :debug])
+        dry-run? (get-in args [:options :dry-run])]
     (dwds.wikidata.log/configure! trace?)
     (try
       (let [vocab    (read-vocab args)
             existing (read-existing args)
+            exists?  (partial exists? existing)
             lemmata  (read-source args)
-            lemmata  (remove (comp existing :lemma) lemmata)
+            lemmata  (remove exists? lemmata)
             lexemes  (lexeme/lex->wb vocab lemmata)
             lexemes  (limit-lexemes lexemes args)]
-        (deref (with-wb args (partial do-import! lexemes))))
+        (if dry-run?
+          (doseq [lexeme lexemes] (log/info (lexeme->csv lexeme)))
+          (deref (with-wb args (partial do-import! lexemes)))))
       (catch Throwable t
         (log/error t "Error while importing lexemes")
         (exit! 2)))))

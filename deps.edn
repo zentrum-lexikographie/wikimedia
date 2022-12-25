@@ -18,9 +18,9 @@
   io.github.gremid/julesratte       {:git/sha      "82674c481562f1f11d21ed3b0dff0a2c359cbafd"
                                      #_:local/root #_ "../julesratte"}}
  :aliases
- {:test     {:extra-paths ["test"]
-             :extra-deps  {lambdaisland/kaocha       {:mvn/version "1.66.1034"}
-                           com.fzakaria/slf4j-timbre {:mvn/version "0.3.21"}}
-             :exec-fn     kaocha.runner/exec-fn}
-  :existing {:main-opts ["-m" "dwds.wikidata.cli.lexemes"]}
+ {:test     {:extra-paths ["test"]}
+  :kaocha   {:extra-deps {lambdaisland/kaocha       {:mvn/version "1.66.1034"}
+                          com.fzakaria/slf4j-timbre {:mvn/version "0.3.21"}}
+             :main-opts  ["-m" "kaocha.runner"]}
+  :existing {:main-opts ["-m" "dwds.wikidata.csv"]}
   :import   {:main-opts ["-m" "dwds.wikidata.cli.import"]}}}

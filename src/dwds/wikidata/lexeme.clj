@@ -10,9 +10,9 @@
   "Maps properties of DWDS lexemes to WikiData item identifiers."
   [vocab {:keys [genera pos plt?] :as lexeme}]
   (cond-> lexeme
-    pos    (assoc :pos (get vocab pos))
-    genera (assoc :genera (into (sorted-set) (map vocab) genera))
-    plt?   (assoc :plt (get vocab lex/plurale-tantum))))
+    pos          (assoc :pos (get vocab pos))
+    (seq genera) (assoc :genera (into (sorted-set) (map vocab) genera))
+    plt?         (assoc :plt (get vocab lex/plurale-tantum))))
 
 (defn entity-value
   [n]
@@ -90,11 +90,15 @@
   (let [stmts (into [] (map (partial genus-statement refs)) genera)]
     (assoc-in entity [:claims :P5185] stmts)))
 
+(defn assoc-other-form
+  [entity {:keys [lemma]}]
+  (assoc-in entity [:lemmas :de :value] lemma))
+
 (def today
   (LocalDate/now))
 
-(defn lex->wb-lemma
-  [lang dwds {:keys [lemma _reprs pos genera plt]}]
+(defn lex->wb-lemmata
+  [lang dwds {:keys [lemma _reprs pos genera plt other]}]
   (let [refs   [{:snaks       {:P248  [(entity-snak :P248 dwds)]
                                :P9940 [(lemma-id-snak lemma)]
                                :P813  [(time-snak :P813 today)]}
@@ -105,8 +109,10 @@
                 :language        (str "Q" lang)
                 :lexicalCategory (str "Q" pos)
                 :lemmas          {:de {:value lemma :language "de"}}
-                :claims          claims}]
-    (cond-> entity genera (assoc-genera refs genera))))
+                :claims          claims}
+        entity  (cond-> entity
+                  (seq genera) (assoc-genera refs genera))]
+    (concat (list entity) (map (partial assoc-other-form entity) other))))
 
 (defn lex->wb-xf
   [vocab]
@@ -118,7 +124,7 @@
           (filter :pos)
           ;; only pass lexemes with resolved WikiData genera (if given)
           (remove #(some nil? (:genera %)))
-          (map (partial lex->wb-lemma lang dwds)))))
+          (mapcat (partial lex->wb-lemmata lang dwds)))))
 
 (defn lex->wb
   "Convert DWDS lexeme data to its WikiData counterpart.

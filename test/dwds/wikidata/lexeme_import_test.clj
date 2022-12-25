@@ -24,4 +24,5 @@
                 (entity/import! config))))))
 
 (comment
+  (lexemes wdqs/vocab)
   @(fixture/with-test-wb-login mw.client/info))

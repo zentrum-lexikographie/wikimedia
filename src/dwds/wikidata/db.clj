@@ -6,17 +6,9 @@
    [next.jdbc :as jdbc]
    [next.jdbc.result-set :as jdbc.rs]))
 
-(def spec
-  {:dbtype         "mysql"
-   :host           (env/get-var "WIKIBASE_DB_HOST" "localhost")
-   :dbname         (env/get-var "WIKIBASE_DB_NAME" "wikibase")
-   :user           (env/get-var "WIKIBASE_DB_USER" "wikibase")
-   :password       (env/get-var "WIKIBASE_DB_PASSWORD" "wikibase")
-   :serverTimezone "UTC"})
-
 (defn query!
   [q]
-  (jdbc/execute! spec (sql/format q)
+  (jdbc/execute! env/db (sql/format q)
                  {:builder-fn jdbc.rs/as-unqualified-kebab-maps}))
 
 (defn str->bytes
@@ -46,6 +38,3 @@
   (->>
    (query! (entity-id-query lex/vocab))
    (into (sorted-map) (map (juxt (comp bytes->str :label) :id)))))
-
-
-

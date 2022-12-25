@@ -29,8 +29,7 @@
            :tokens-pct (float (/ (:covered-tokens c) (:total-tokens c))))))
 
 (deftest ^:coverage increased-coverage
-  (let [forms    #{"bin" "bist" "ist" "sind" "seid"
-                   "habe" "hast" "hat" "haben" "habt"}
+  (let [forms    (fixture/wikidata-forms)
         coverage (measure-wikipedia-coverage forms)]
     (is (< 0.8 (:tokens-pct coverage)))
     (is (< 0.2 (:forms-pct coverage)))))
