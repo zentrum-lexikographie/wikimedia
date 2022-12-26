@@ -1,11 +1,14 @@
 (ns dwds.wikidata.dump
   (:require
+   [clojure.data.csv :as csv]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [dwds.wikidata.http :as http]
+   [dwds.wikidata.log]
    [jsonista.core :as json]
    [taoensso.timbre :as log])
   (:import
+   (java.io FileDescriptor FileOutputStream IOException)
    (java.util.zip GZIPInputStream)))
 
 (def lexemes-dump-url
@@ -51,6 +54,17 @@
    (with-open [rdr (lexemes-dump-reader)]
      (into [] (comp parse-lexeme-dump-xf xf) (line-seq rdr)))))
 
-(comment
-  (with-open [r (lexemes-dump-reader)]
-    (into [] (take 2) (parse-lexemes r))))
+(defn lexeme->csv
+  [{:keys [id lemmas]}]
+  (for [[lang {lemma :value}] lemmas]
+    [id (name lang) lemma]))
+
+(defn -main
+  [& _]
+  (dwds.wikidata.log/configure! true)
+  (try
+    (with-open [in  (lexemes-dump-reader)
+                out (io/writer (FileOutputStream. FileDescriptor/out))]
+      (csv/write-csv out (mapcat lexeme->csv (parse-lexemes in))))
+    (catch IOException _)
+    (finally (System/exit 0))))

@@ -1,11 +1,11 @@
-(ns dwds.wikidata.cli.import
+(ns dwds.wikidata.import
   (:require
    [clojure.data.csv :as csv]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.tools.cli :refer [parse-opts]]
-   [dwds.wikidata.csv :refer [lexeme->csv]]
    [dwds.wikidata.db :as db]
+   [dwds.wikidata.dump :refer [lexeme->csv]]
    [dwds.wikidata.entity :as entity]
    [dwds.wikidata.lex :as lex]
    [dwds.wikidata.lexeme :as lexeme]
@@ -167,7 +167,7 @@
             lexemes  (lexeme/lex->wb vocab lemmata)
             lexemes  (limit-lexemes lexemes args)]
         (if dry-run?
-          (doseq [lexeme lexemes] (log/info (lexeme->csv lexeme)))
+          (doseq [lexeme lexemes] (log/info (-> lexeme lexeme->csv vec)))
           (deref (with-wb args (partial do-import! lexemes)))))
       (catch Throwable t
         (log/error t "Error while importing lexemes")

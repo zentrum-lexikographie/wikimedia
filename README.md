@@ -38,15 +38,18 @@ Export a digest of existing WikiData lexemes (based on a [current
 dump](https://dumps.wikimedia.org/wikidatawiki/entities/latest-lexemes.json.gz)):
 
 ```
-$ clojure -M:existing >lexemes.csv
+$ clojure -M:dump >lexemes.csv
 ```
+
+Then run the import, filtering existing lexemes based on the exported dump
+retrieved before:
 
 ```
 $ clojure -M:import\
     -l 1\
     -e lexemes.csv\
     -e lexemes.wikidata.csv\
-    -s ../zdl-wb\
+    -s ../../data/zdl/wb\
     >>lexemes.wikidata.csv 
 ```
 

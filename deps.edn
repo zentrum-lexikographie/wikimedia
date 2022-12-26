@@ -22,5 +22,5 @@
   :kaocha   {:extra-deps {lambdaisland/kaocha       {:mvn/version "1.66.1034"}
                           com.fzakaria/slf4j-timbre {:mvn/version "0.3.21"}}
              :main-opts  ["-m" "kaocha.runner"]}
-  :existing {:main-opts ["-m" "dwds.wikidata.csv"]}
-  :import   {:main-opts ["-m" "dwds.wikidata.cli.import"]}}}
+  :dump     {:main-opts ["-m" "dwds.wikidata.dump"]}
+  :import   {:main-opts ["-m" "dwds.wikidata.import"]}}}
