@@ -98,7 +98,7 @@
 
 (defn with-wb
   [{{:keys [user password] {:keys [scheme host path]} :base-url} :options} f]
-  (log/infof "Importing into %s@%s" user host)
+  (log/infof "Logging into %s@%s" user host)
   (-> (mw.client/endpoint-url scheme host path)
       (mw.client/config-for-endpoint (mw.client/create-session-client))
       (assoc :warn->error? false)
@@ -167,8 +167,10 @@
             lexemes  (lexeme/lex->wb vocab lemmata)
             lexemes  (limit-lexemes lexemes args)]
         (if dry-run?
-          (doseq [lexeme lexemes] (log/info (-> lexeme lexeme->csv vec)))
-          (deref (with-wb args (partial do-import! lexemes)))))
+          (doseq [lexeme lexemes]
+            (log/info (-> lexeme lexeme->csv vec)))
+          (doseq [batch (partition-all 1000 lexemes)]
+            (deref (with-wb args (partial do-import! batch))))))
       (catch Throwable t
         (log/error t "Error while importing lexemes")
         (exit! 2)))))
