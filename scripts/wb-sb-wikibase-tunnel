@@ -1,2 +1,0 @@
-#!/bin/bash
-exec ssh -N -v -L 8080:localhost:8080 root@wb-sandbox.middell.net
