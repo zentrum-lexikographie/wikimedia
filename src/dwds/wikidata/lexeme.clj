@@ -122,10 +122,10 @@
       (db/query
        "where wd.id is null"
        (comp
-        (drop 13607)
+        (drop 17302)
         (map (partial create-entity! env/api-endpoint csrf-token))
         (map-indexed (fn [i {[{:dwdsmor_index/keys [analysis pos]}] :dwdsmor}]
-                       (log/debugf "%010d [%4s] %s" (+ i 13607) pos analysis)))
+                       (log/debugf "%010d [%4s] %s" (+ i 17302) pos analysis)))
         (map (constantly 1)))
        + 0))))
 
