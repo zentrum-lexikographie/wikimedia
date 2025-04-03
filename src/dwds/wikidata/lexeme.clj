@@ -1,25 +1,20 @@
 (ns dwds.wikidata.lexeme
-  "Support for the data model of Wikidata lexemes."
   (:require
-   [dwds.wikidata.lex :as lex]
-   [lambdaisland.uri :as uri])
+   [dwds.wikidata.db :as db]
+   [dwds.wikidata.env :as env]
+   [julesratte.auth :as jr.auth]
+   [julesratte.client :as jr.client]
+   [julesratte.json :as jr.json]
+   [taoensso.timbre :as log])
   (:import
    (java.time LocalDate)))
 
-(defn assoc-vocab
-  "Maps properties of DWDS lexemes to WikiData item identifiers."
-  [vocab {:keys [genera pos plt?] :as lexeme}]
-  (cond-> lexeme
-    pos          (assoc :pos (get vocab pos))
-    (seq genera) (assoc :genera (into (sorted-set) (map vocab) genera))
-    plt?         (assoc :plt (get vocab lex/plurale-tantum))))
-
 (defn entity-value
-  [n]
+  [id]
   {:type  "wikibase-entityid"
    :value {:entity-type "item"
-           :numeric-id  n
-           :id          (str "Q" n)}})
+           :numeric-id  (parse-long (subs id 1))
+           :id          id}})
 
 (defn str-value
   [s]
@@ -34,18 +29,11 @@
    :datavalue (str-value v)})
 
 (defn entity-snak
-  [p v]
+  [p id]
   {:snaktype  "value"
    :property  (name p)
    :datatype  "wikibase-item"
-   :datavalue (entity-value v)})
-
-(defn url-snak
-  [p v]
-  {:snaktype  "value"
-   :property  (name p)
-   :datatype  "url"
-   :datavalue (str-value v)})
+   :datavalue (entity-value id)})
 
 (defn time-snak
   [p ^LocalDate d]
@@ -61,9 +49,6 @@
                 :before        0}
                :type "time"}})
 
-(def dwds-wb-uri
-  (uri/uri "https://www.dwds.de/wb/"))
-
 (defn lemma-id-snak
   [lemma]
   (ext-id-snak :P9940 lemma))
@@ -74,62 +59,75 @@
    :mainsnak   (lemma-id-snak lemma) })
 
 (defn plt-statement
-  [refs plt]
+  [refs]
   {:type       "statement"
-   :mainsnak   (entity-snak :P31 plt)
+   :mainsnak   (entity-snak :P31 "Q138246")
    :references refs})
+
+(def gender->entity-id
+  {"Masc" "Q499327"
+   "Fem"  "Q1775415"
+   "Neut" "Q1775461"})
 
 (defn genus-statement
-  [refs v]
-  {:type       "statement"
-   :mainsnak   (entity-snak :P5185 v)
-   :references refs})
+  [refs gender]
+  (when-let [id (gender->entity-id gender)]
+    (list {:type       "statement"
+           :mainsnak   (entity-snak :P5185 id)
+           :references refs})))
 
-(defn assoc-genera
-  [entity refs genera]
-  (let [stmts (into [] (map (partial genus-statement refs)) genera)]
-    (assoc-in entity [:claims :P5185] stmts)))
+(defn entity-data
+  [{[{:dwdsmor_index/keys [analysis pos]} :as forms] :dwdsmor}]
+  (let [refs    [{:snaks       {:P248  [(entity-snak :P248 "Q108696977")]
+                                :P9940 [(lemma-id-snak analysis)]
+                                :P813  [(time-snak :P813 (LocalDate/now))]}
+                  :snaks-order ["P248" "P9940" "P813"]}]
+        dwds-id [(dwds-lemma-id-statement analysis)]
+        noun?   (= "+NN" pos)
+        genera  (when noun? (map :dwdsmor_index/gender forms))
+        genera  (into (sorted-set) genera)
+        plt?    (and noun? (some? (genera "UnmGend")))
+        plt     (when plt? [(plt-statement refs)])
+        genera  (into [] (mapcat (partial genus-statement refs)) genera)]
+    {:type            "lexeme"
+     :language        "Q188"
+     :lexicalCategory (db/pos->lex-cat pos)
+     :lemmas          {:de {:value    analysis
+                            :language "de"}}
+     :claims          (cond-> {}
+                        (seq plt)    (assoc :P31 plt)
+                        (seq genera) (assoc :P5185 genera)
+                        :always      (assoc :P9940 dwds-id))}))
 
-(defn assoc-other-form
-  [entity {:keys [lemma]}]
-  (assoc-in entity [:lemmas :de :value] lemma))
+(def create-entity-request-params
+  {:action "wbeditentity"
+   :new    "lexeme"
+   :bot    "true"})
 
-(def today
-  (LocalDate/now))
+(defn create-entity!
+  [url csrf-token lexeme]
+  (->
+   (assoc create-entity-request-params
+          :data (jr.json/write-value (entity-data lexeme))
+          :token csrf-token)
+   (jr.client/request-with-params)
+   (assoc :url url)
+   (jr.client/request!))
+  lexeme)
 
-(defn lex->wb-lemmata
-  [lang dwds {:keys [lemma _reprs pos genera plt other]}]
-  (let [refs   [{:snaks       {:P248  [(entity-snak :P248 dwds)]
-                               :P9940 [(lemma-id-snak lemma)]
-                               :P813  [(time-snak :P813 today)]}
-                 :snaks-order ["P248" "P9940" "P813"]}]
-        claims (cond-> {:P9940 [(dwds-lemma-id-statement lemma)]}
-                 plt (assoc :P31 [(plt-statement refs plt)]))
-        entity {:type            "lexeme"
-                :language        (str "Q" lang)
-                :lexicalCategory (str "Q" pos)
-                :lemmas          {:de {:value lemma :language "de"}}
-                :claims          claims}
-        entity  (cond-> entity
-                  (seq genera) (assoc-genera refs genera))]
-    (concat (list entity) (map (partial assoc-other-form entity) other))))
+(defn import!
+  [& _]
+  (jr.auth/with-login env/login
+    (let [csrf-token (jr.auth/csrf-token env/api-endpoint)]
+      (db/query
+       "where wd.id is null"
+       (comp
+        (drop 13607)
+        (map (partial create-entity! env/api-endpoint csrf-token))
+        (map-indexed (fn [i {[{:dwdsmor_index/keys [analysis pos]}] :dwdsmor}]
+                       (log/debugf "%010d [%4s] %s" (+ i 13607) pos analysis)))
+        (map (constantly 1)))
+       + 0))))
 
-(defn lex->wb-xf
-  [vocab]
-  (let [lang (get vocab lex/lang 188)
-        dwds (get vocab lex/source 108696977)]
-    (comp (remove :hidx)
-          (map (partial assoc-vocab vocab))
-          ;; only pass lexemes with a resolved WikiData POS
-          (filter :pos)
-          ;; only pass lexemes with resolved WikiData genera (if given)
-          (remove #(some nil? (:genera %)))
-          (mapcat (partial lex->wb-lemmata lang dwds)))))
-
-(defn lex->wb
-  "Convert DWDS lexeme data to its WikiData counterpart.
-
-  The vocubulary depends on the targetted Wikibase instance, i. e. the central
-  WikiData instance vs. a test setup."
-  [vocab lemmata]
-  (sequence (lex->wb-xf vocab) lemmata))
+(comment
+  (import!))

@@ -1,7 +1,6 @@
 (ns dwds.wikidata.env
   (:require
-   [lambdaisland.uri :refer [uri]]
-   [clojure.java.io :as io])
+   [julesratte.client :as jr.client])
   (:import
    (io.github.cdimascio.dotenv Dotenv)))
 
@@ -14,31 +13,17 @@
   ([k dv]
    (or (System/getenv k) (.get dot-env k) dv)))
 
-(def lex-dir
-  (io/file (get-var "DWDS_LEX_DIR" "zdl-wb")))
+(def huggingface-token
+  (get-var "HF_TOKEN" ""))
 
 (def db
-  {:dbtype         "mysql"
-   :host           (get-var "WIKIBASE_DB_HOST" "localhost")
-   :dbname         (get-var "WIKIBASE_DB_NAME" "wikibase")
-   :user           (get-var "WIKIBASE_DB_USER" "wikibase")
-   :password       (get-var "WIKIBASE_DB_PASSWORD" "wikibase")
-   :serverTimezone "UTC"})
+  {:dbtype "sqlite"
+   :dbname "lexemes.db"})
 
-(def api-uri
-  (uri (get-var "WIKIBASE_API_URL" "http://localhost/w/api.php")))
+(def api-endpoint
+  (jr.client/api-endpoint "www.wikidata.org"))
 
-(def api-user
-  (get-var "WIKIBASE_API_USER" "Admin"))
-
-(def api-password
-  (get-var "WIKIBASE_API_PASSWORD" "secret1234"))
-
-(def test-api-uri
-  (uri (get-var "WIKIBASE_TEST_API_URL" "http://localhost/w/api.php")))
-
-(def test-api-user
-  (get-var "WIKIBASE_TEST_API_USER" "Admin"))
-
-(def test-api-password
-  (get-var "WIKIBASE_TEST_API_PASSWORD" "secret1234"))
+(def login
+  {:url      api-endpoint
+   :user     (get-var "API_LOGIN_USER" "DwdsBot@DwdsBot")
+   :password (get-var "API_LOGIN_PASSWORD" "DwdsBot@DwdsBot")})

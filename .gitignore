@@ -1,11 +1,9 @@
-.env
+.clerk/
+.clj-kondo/
 .cpcache/
+.env
 .nrepl-port
-
-.python-version
 
 *.temp
 
-ansible/vault-password
-data/
-test-data/
+lexemes.db
