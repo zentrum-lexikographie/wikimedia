@@ -2,7 +2,12 @@
   (:require
    [dwds.wikidata.db :as db]
    [clojure.java.io :as io]
-   [clojure.data.csv :as csv]))
+   [clojure.data.csv :as csv]
+   [dwds.wikidata.env :as env]
+   [julesratte.auth :as jr.auth]
+   [julesratte.client :as jr.client]
+   [julesratte.json :as jr.json]
+   [taoensso.timbre :as log]))
 
 (def with-wikidata-forms?
   (comp seq :forms :wikidata_lexeme/entity :wikidata))
@@ -88,7 +93,7 @@
   (let [features (into #{} features)]
     (into [form] (map #(if (features %) 1 0)) grammatical-features)))
 
-(defn sample-export!
+(defn sample-data!
   [& _]
   (with-open [w (io/writer (io/file "wikidata-forms-import-sample.csv"))]
     (csv/write-csv w [(into ["Form"] grammatical-features)])
@@ -101,3 +106,47 @@
            (map wikidata-form->csv)
            (partition-all 1024))
      (completing (fn [w records] (doto w (csv/write-csv records)))) w)))
+
+(defn form-data
+  [id n [form & features]]
+  {:id                  (str id "-F" (inc n))
+   :representations     {:de form}
+   :grammaticalFeatures (vec features)
+   :claims              {}})
+
+(defn forms-data
+  [{{:wikidata_lexeme/keys [id]} :wikidata forms :wikidata-forms}]
+  (into [] (map-indexed (partial form-data id) forms)))
+
+(def add-forms-request-params
+  {:action "wbeditentity"
+   :bot    "true"})
+
+(defn add-forms!
+  [url csrf-token {{:wikidata_lexeme/keys [id]} :wikidata :as lexeme}]
+  (->
+   (assoc add-forms-request-params
+          :id  id
+          :data (jr.json/write-value {:forms (forms-data lexeme)})
+          :token csrf-token)
+   (jr.client/request-with-params)
+   (assoc :url url)
+   (log/info) #_(jr.client/request!))
+  lexeme)
+
+(defn import!
+  [& _]
+  (jr.auth/with-login env/login
+    (let [csrf-token (jr.auth/csrf-token env/api-endpoint)]
+      (db/query
+       "where wd.id is not null"
+       (comp
+        (remove with-wikidata-forms?)
+        (map assoc-wd-form-and-features)
+        (drop 1000)
+        (take 1)
+        (map (partial add-forms! env/api-endpoint csrf-token))
+        (map-indexed (fn [i {[{:dwdsmor_index/keys [analysis pos]}] :dwdsmor}]
+                       (log/debugf "%010d [%4s] %s" i pos analysis)))
+        (map (constantly 1)))
+       + 0))))
