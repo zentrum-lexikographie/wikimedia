@@ -1,5 +1,6 @@
 (ns dwds.wikidata.lexeme
   (:require
+   [diehard.core :as dh :refer [defratelimiter]]
    [dwds.wikidata.db :as db]
    [dwds.wikidata.env :as env]
    [julesratte.auth :as jr.auth]
@@ -104,15 +105,20 @@
    :new    "lexeme"
    :bot    "true"})
 
+#_:clj-kondo/ignore
+(defratelimiter create-entity-rate-limiter
+  {:rate (float (/ 80 60))})
+
 (defn create-entity!
   [url csrf-token lexeme]
-  (->
-   (assoc create-entity-request-params
-          :data (jr.json/write-value (entity-data lexeme))
-          :token csrf-token)
-   (jr.client/request-with-params)
-   (assoc :url url)
-   (jr.client/request!))
+  (dh/with-rate-limiter {:ratelimiter create-entity-rate-limiter}
+    (->
+     (assoc create-entity-request-params
+            :data (jr.json/write-value (entity-data lexeme))
+            :token csrf-token)
+     (jr.client/request-with-params)
+     (assoc :url url)
+     (jr.client/request!)))
   lexeme)
 
 (defn import!
@@ -122,10 +128,10 @@
       (db/query
        "where wd.id is null"
        (comp
-        (drop 17302)
+        (drop 23086)
         (map (partial create-entity! env/api-endpoint csrf-token))
         (map-indexed (fn [i {[{:dwdsmor_index/keys [analysis pos]}] :dwdsmor}]
-                       (log/debugf "%010d [%4s] %s" (+ i 17302) pos analysis)))
+                       (log/debugf "%010d [%4s] %s" (+ i 23086) pos analysis)))
         (map (constantly 1)))
        + 0))))
 
