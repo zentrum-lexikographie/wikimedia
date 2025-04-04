@@ -108,15 +108,15 @@
      (completing (fn [w records] (doto w (csv/write-csv records)))) w)))
 
 (defn form-data
-  [id n [form & features]]
-  {:id                  (str id "-F" (inc n))
-   :representations     {:de form}
+  [[form & features]]
+  {:add                 ""
+   :representations     {:de {:language "de" :value form}}
    :grammaticalFeatures (vec features)
    :claims              {}})
 
 (defn forms-data
-  [{{:wikidata_lexeme/keys [id]} :wikidata forms :wikidata-forms}]
-  (into [] (map-indexed (partial form-data id) forms)))
+  [{forms :wikidata-forms}]
+  (into [] (map form-data forms)))
 
 (def add-forms-request-params
   {:action "wbeditentity"
