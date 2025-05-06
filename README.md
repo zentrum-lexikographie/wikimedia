@@ -19,6 +19,10 @@ Configure credentials via `.env`:
 
     clojure -X dwds.wikidata.lexeme/import!
 
+## Import missing forms
+
+    clojure -X dwds.wikidata.form/import!
+
 ## License
 
 Copyright 2022-2025 Gregor Middell.

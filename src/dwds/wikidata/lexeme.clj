@@ -110,30 +110,31 @@
   {:rate (float (/ 80 60))})
 
 (defn create-entity!
-  [url csrf-token lexeme]
-  (dh/with-rate-limiter {:ratelimiter create-entity-rate-limiter}
-    (->
-     (assoc create-entity-request-params
-            :data (jr.json/write-value (entity-data lexeme))
-            :token csrf-token)
-     (jr.client/request-with-params)
-     (assoc :url url)
-     (jr.client/request!)))
+  [url csrf-token dry-run? lexeme]
+  (when-not dry-run?
+    (dh/with-rate-limiter {:ratelimiter create-entity-rate-limiter}
+      (->
+       (assoc create-entity-request-params
+              :data (jr.json/write-value (entity-data lexeme))
+              :token csrf-token)
+       (jr.client/request-with-params)
+       (assoc :url url)
+       (jr.client/request!))))
   lexeme)
 
 (defn import!
-  [& _]
+  [{:keys [offset dry-run?] :or {offset 0 dry-run? true}}]
   (jr.auth/with-login env/login
     (let [csrf-token (jr.auth/csrf-token env/api-endpoint)]
       (db/query
        "where wd.id is null"
        (comp
-        (drop 23086)
-        (map (partial create-entity! env/api-endpoint csrf-token))
+        (drop offset)
+        (map (partial create-entity! env/api-endpoint csrf-token dry-run?))
         (map-indexed (fn [i {[{:dwdsmor_index/keys [analysis pos]}] :dwdsmor}]
-                       (log/debugf "%010d [%4s] %s" (+ i 23086) pos analysis)))
+                       (log/debugf "%010d [%4s] %s" (+ i offset) pos analysis)))
         (map (constantly 1)))
        + 0))))
 
 (comment
-  (import!))
+  (import! {}))

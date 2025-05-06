@@ -7,14 +7,15 @@
    [julesratte.auth :as jr.auth]
    [julesratte.client :as jr.client]
    [julesratte.json :as jr.json]
-   [taoensso.timbre :as log]))
+   [taoensso.timbre :as log]
+   [clojure.string :as str]))
 
 (def with-wikidata-forms?
   (comp seq :forms :wikidata_lexeme/entity :wikidata))
 
 (defn wd-form-and-features
   [{:dwdsmor_index/keys [tense number casus person funct pos degree mood gender
-                         nonfinite inflected]}]
+                         nonfinite inflected category]}]
   (->>
    (cond-> (sorted-set)
      (= "Sg" number)        (conj "Q110786")
@@ -34,7 +35,9 @@
      (= "Sup" degree)       (conj "Q1817208")
      (= "Attr/Subst" funct) (conj "Q4818723")
      (= "Pred/Adv" funct)   (conj "Q1931259")
-     (= "Inf" nonfinite)    (conj "Q179230")
+     (= "Inf" nonfinite)    (cond->
+                                (= "Cl" category)(conj "Q100952920")
+                                :else            (conj "Q179230"))
      (= "Part" nonfinite)   (cond->
                                 (= "Pres" tense) (conj "Q10345583")
                                 (= "Perf" tense) (conj "Q12717679"))
@@ -81,6 +84,7 @@
    "Q54671845"
    "Q22716"
    "Q179230"
+   "Q100952920"
    "Q1931259"
    "Q3482678"
    "Q12717679"
@@ -123,30 +127,40 @@
    :bot    "true"})
 
 (defn add-forms!
-  [url csrf-token {{:wikidata_lexeme/keys [id]} :wikidata :as lexeme}]
-  (->
-   (assoc add-forms-request-params
-          :id  id
-          :data (jr.json/write-value {:forms (forms-data lexeme)})
-          :token csrf-token)
-   (jr.client/request-with-params)
-   (assoc :url url)
-   (log/info) #_(jr.client/request!))
+  [url csrf-token dry-run? {{:wikidata_lexeme/keys [id]} :wikidata :as lexeme}]
+  (when-not dry-run?
+    (->
+     (assoc add-forms-request-params
+            :id  id
+            :data (jr.json/write-value {:forms (forms-data lexeme)})
+            :token csrf-token)
+     (jr.client/request-with-params)
+     (assoc :url url)
+     (jr.client/request!)))
   lexeme)
 
+(def sample-lemmata
+  #{"Ikarusflug" "Abendsonnenschein"
+    "verdummbeuteln" "andrehen" "strudeln"
+    "euklidisch" "lebensfeindlich"})
+
 (defn import!
-  [& _]
+  [{:keys [offset dry-run?] :or {offset 0 dry-run? true}}]
   (jr.auth/with-login env/login
     (let [csrf-token (jr.auth/csrf-token env/api-endpoint)]
       (db/query
-       "where wd.id is not null"
+       (str "where wd.id is not null "
+            "and wd.lemma in "
+            "(" (str/join "," (map #(str "'" % "'") sample-lemmata)) ")")
        (comp
         (remove with-wikidata-forms?)
         (map assoc-wd-form-and-features)
-        (drop 1000)
-        (take 1)
-        (map (partial add-forms! env/api-endpoint csrf-token))
-        (map-indexed (fn [i {[{:dwdsmor_index/keys [analysis pos]}] :dwdsmor}]
-                       (log/debugf "%010d [%4s] %s" i pos analysis)))
+        (drop offset)
+        (map (partial add-forms! env/api-endpoint csrf-token dry-run?))
+        (map-indexed
+         (fn [i {[{:dwdsmor_index/keys [analysis pos]}] :dwdsmor
+                 :keys                                  [wikidata-forms]}]
+           (log/debugf "%010d [%4s] [%02d] %s" (+ offset i) pos
+                       (count wikidata-forms) analysis)))
         (map (constantly 1)))
        + 0))))

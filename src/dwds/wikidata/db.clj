@@ -5,7 +5,8 @@
    [next.jdbc :as jdbc]
    [next.jdbc.sql :as jdbc.sql]
    [julesratte.wikidata.lexemes :as wd.lexemes]
-   [taoensso.timbre :as log]))
+   [taoensso.timbre :as log]
+   [clojure.string :as str]))
 
 (require 'next.jdbc.date-time)
 
@@ -70,12 +71,17 @@
   [s]
   (re-seq #"^[0-9a-zA-ZÄÉÖÜßàáâãäåçèéêîñóôöøùúûüŒœř\₀\₂'…\!\,\-\.\?\ ]+$" s))
 
+(defn separable-verb?
+  [spec]
+  (str/includes? spec "<SEP>"))
+
 (defn form->db
   [{lemma "analysis" pos "pos" lemma-index "lidx" paradigm-index "pidx"
-    orth "orthinfo" cap? "charinfo" meta "metainfo"
+    orth "orthinfo" cap? "charinfo" meta "metainfo" spec "spec"
     :as form}]
   (when (and (pos-of-interest? pos)
              (valid-wikidata-lemma? lemma)
+             (not (separable-verb? spec))
              (every? nil? [lemma-index paradigm-index orth cap? meta]))
     (log/debugf "DWDSmor: [%6s] %s" (form "pos") (form "spec"))
     (list [(form "analysis")
@@ -173,18 +179,18 @@
   [m]
   (reduce dissoc m paradigm-columns))
 
-(defn group-paradigm
+(defn read-paradigm
   [[{wd-id :wikidata_lexeme/id :as form} :as paradigm]]
   (cond-> {:dwdsmor (into [] (map dissoc-wikidata-columns) paradigm)}
-    wd-id (assoc :wikidata (select-keys form wikidata-columns))))
+    wd-id (assoc :wikidata (read-wikidata-entity
+                            (select-keys form wikidata-columns)))))
 
 (defn query-xf
   [xform]
   (comp (map (partial into {}))
         (remove (partial wikidata-homograph? (wikidata-homographs)))
-        (partition-all 1024) (mapcat (partial pmap read-wikidata-entity))
         (partition-by (juxt :dwdsmor_index/analysis :dwdsmor_index/pos))
-        (map group-paradigm)
+        (partition-all 1024) (mapcat (partial pmap read-paradigm))
         xform))
 
 (defn query
@@ -203,7 +209,5 @@
                 " order by di.analysis, di.pos, di.spec")]))))
 
 (comment
-  (query
-   (take 10)
-   conj []))
+  (query (comp (drop (rand-int 1000)) (take 10)) conj []))
 
