@@ -10,7 +10,7 @@
 (defn index-reader
   []
   (-> (str "https://huggingface.co/zentrum-lexikographie/dwdsmor-dwds/"
-           "resolve/main/index.csv.lzma")
+           "resolve/main/index.csv.xz")
       (http/get {:oauth-token env/huggingface-token
                  :http-client (http/build-http-client {:redirect-policy :normal})
                  :as          :stream})

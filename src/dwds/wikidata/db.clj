@@ -1,12 +1,11 @@
 (ns dwds.wikidata.db
   (:require
-   [dwds.wikidata.env :refer [db]]
    [dwds.wikidata.dwdsmor :as dwdsmor]
+   [dwds.wikidata.env :refer [db]]
+   [julesratte.wikidata.lexemes :as jr.wd.lexemes]
    [next.jdbc :as jdbc]
    [next.jdbc.sql :as jdbc.sql]
-   [julesratte.wikidata.lexemes :as wd.lexemes]
-   [taoensso.timbre :as log]
-   [clojure.string :as str]))
+   [taoensso.timbre :as log]))
 
 (require 'next.jdbc.date-time)
 
@@ -29,10 +28,10 @@
   (partial jdbc/plan db))
 
 (def lex-cat->pos
-  {"Q34698"  "+ADJ"
-   "Q380057" "+ADV"
-   "Q1084"   "+NN"
-   "Q24905"  "+V"})
+  {"Q34698"  "ADJ"
+   "Q380057" "ADV"
+   "Q1084"   "NN"
+   "Q24905"  "V"})
 
 (def pos->lex-cat
   (reduce-kv (fn [m lex-cat pos] (assoc m pos lex-cat)) {} lex-cat->pos))
@@ -41,7 +40,7 @@
   (into #{} (vals lex-cat->pos)))
 
 (defn lexeme->db
-  [{{lemma :de} :lemmas lex-cat :lexicalCategory
+  [{{{lemma :value} :de} :lemmas lex-cat :lexicalCategory
     id :id last-modified :modified :as lexeme}]
   (when-let [pos (get lex-cat->pos lex-cat)]
     (when (and lemma (<= (count lemma) 256))
@@ -71,18 +70,13 @@
   [s]
   (re-seq #"^[0-9a-zA-ZÄÉÖÜßàáâãäåçèéêîñóôöøùúûüŒœř\₀\₂'…\!\,\-\.\?\ ]+$" s))
 
-(defn separable-verb?
-  [spec]
-  (str/includes? spec "<SEP>"))
-
 (defn form->db
   [{lemma "analysis" pos "pos" lemma-index "lidx" paradigm-index "pidx"
-    orth "orthinfo" cap? "charinfo" meta "metainfo" spec "spec"
+    orth "orthinfo" syn "syninfo" cap? "charinfo" meta "metainfo" spec "spec"
     :as form}]
   (when (and (pos-of-interest? pos)
              (valid-wikidata-lemma? lemma)
-             (not (separable-verb? spec))
-             (every? nil? [lemma-index paradigm-index orth cap? meta]))
+             (every? nil? [lemma-index paradigm-index orth syn cap? meta]))
     (log/debugf "DWDSmor: [%6s] %s" (form "pos") (form "spec"))
     (list [(form "analysis")
            (form "pos")
@@ -97,7 +91,8 @@
            (form "degree")
            (form "mood")
            (form "function")
-           (form "auxiliary")])))
+           (form "auxiliary")
+           (form "category")])))
 
 (defn insert-dwdsmor-index!
   [forms]
@@ -117,7 +112,8 @@
                            "degree char(4),"
                            "mood char(4),"
                            "funct char(10),"
-                           "aux char(5)"
+                           "aux char(5),",
+                           "category char(7)"
                            ")")])
     (doseq [batch (partition-all 1024 (mapcat form->db forms))]
       (jdbc/with-transaction [tx c]
@@ -126,7 +122,7 @@
          :dwdsmor_index
          [:analysis :pos :spec :inflected
           :gender :casus :person :number :nonfinite :tense :degree :mood
-          :funct :aux]
+          :funct :aux :category]
          batch)))))
 
 (defn create-indices
@@ -140,8 +136,8 @@
 
 (defn build!
   [& _]
-  (with-open [r (wd.lexemes/read-dump)]
-    (->> (wd.lexemes/parse-dump r)
+  (with-open [r (jr.wd.lexemes/read-dump)]
+    (->> (jr.wd.lexemes/parse-dump r)
          (insert-wikidata-lexemes!)))
   (with-open [r (dwdsmor/index-reader)]
     (->> (dwdsmor/parse-index r)
@@ -211,3 +207,9 @@
 (comment
   (query (comp (drop (rand-int 1000)) (take 10)) conj []))
 
+(comment
+  (with-open [r (jr.wd.lexemes/read-dump)]
+    (->> (jr.wd.lexemes/parse-dump r)
+         (mapcat lexeme->db)
+         (take 10)
+         (vec))))

@@ -3,8 +3,7 @@
    [diehard.core :as dh :refer [defratelimiter]]
    [dwds.wikidata.db :as db]
    [dwds.wikidata.env :as env]
-   [julesratte.auth :as jr.auth]
-   [julesratte.client :as jr.client]
+   [julesratte.client :as jr]
    [julesratte.json :as jr.json]
    [taoensso.timbre :as log])
   (:import
@@ -84,7 +83,7 @@
                                 :P813  [(time-snak :P813 (LocalDate/now))]}
                   :snaks-order ["P248" "P9940" "P813"]}]
         dwds-id [(dwds-lemma-id-statement analysis)]
-        noun?   (= "+NN" pos)
+        noun?   (= "NN" pos)
         genera  (when noun? (map :dwdsmor_index/gender forms))
         genera  (into (sorted-set) genera)
         plt?    (and noun? (some? (genera "UnmGend")))
@@ -100,41 +99,33 @@
                         (seq genera) (assoc :P5185 genera)
                         :always      (assoc :P9940 dwds-id))}))
 
-(def create-entity-request-params
-  {:action "wbeditentity"
-   :new    "lexeme"
-   :bot    "true"})
-
 #_:clj-kondo/ignore
 (defratelimiter create-entity-rate-limiter
   {:rate (float (/ 80 60))})
 
 (defn create-entity!
-  [url csrf-token dry-run? lexeme]
+  [csrf-token dry-run? lexeme]
   (when-not dry-run?
     (dh/with-rate-limiter {:ratelimiter create-entity-rate-limiter}
-      (->
-       (assoc create-entity-request-params
-              :data (jr.json/write-value (entity-data lexeme))
-              :token csrf-token)
-       (jr.client/request-with-params)
-       (assoc :url url)
-       (jr.client/request!))))
+      (env/api-request! {:action "wbeditentity"
+                         :new    "lexeme"
+                         :bot    "true"
+                         :data   (jr.json/write-value (entity-data lexeme))
+                         :token  csrf-token})))
   lexeme)
 
 (defn import!
   [{:keys [offset dry-run?] :or {offset 0 dry-run? true}}]
-  (jr.auth/with-login env/login
-    (let [csrf-token (jr.auth/csrf-token env/api-endpoint)]
-      (db/query
-       "where wd.id is null"
-       (comp
-        (drop offset)
-        (map (partial create-entity! env/api-endpoint csrf-token dry-run?))
-        (map-indexed (fn [i {[{:dwdsmor_index/keys [analysis pos]}] :dwdsmor}]
-                       (log/debugf "%010d [%4s] %s" (+ i offset) pos analysis)))
-        (map (constantly 1)))
-       + 0))))
+  (jr/with-login env/login
+    (db/query
+     "where wd.id is null"
+     (comp
+      (drop offset)
+      (map (partial create-entity! (env/api-csrf-token) dry-run?))
+      (map-indexed (fn [i {[{:dwdsmor_index/keys [analysis pos]}] :dwdsmor}]
+                     (log/debugf "%010d [%4s] %s" (+ i offset) pos analysis)))
+      (map (constantly 1)))
+     + 0)))
 
 (comment
   (import! {}))

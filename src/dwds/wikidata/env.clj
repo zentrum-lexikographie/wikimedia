@@ -1,6 +1,6 @@
 (ns dwds.wikidata.env
   (:require
-   [julesratte.client :as jr.client])
+   [julesratte.client :as jr])
   (:import
    (io.github.cdimascio.dotenv Dotenv)))
 
@@ -21,7 +21,13 @@
    :dbname "lexemes.db"})
 
 (def api-endpoint
-  (jr.client/api-endpoint "www.wikidata.org"))
+  (jr/api-url "www.wikidata.org"))
+
+(def api-request!
+  (partial jr/request! api-endpoint))
+
+(def api-csrf-token
+  (partial jr/csrf-token api-endpoint))
 
 (def login
   {:url      api-endpoint
