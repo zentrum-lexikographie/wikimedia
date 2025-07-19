@@ -1,8 +1,8 @@
 (ns german-lexemes
   (:require
+   [clojure.string :as str]
    [dwds.wikidata.db :as db]
-   [julesratte.wikidata :as wd]
-   [clojure.string :as str]))
+   [julesratte.wikibase :as wb]))
 
 (def dwds-lexemes
   (->>

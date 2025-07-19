@@ -88,6 +88,7 @@
          (->> dwdsmor
               (filter wd-form?)
               (map wd-form-and-features)
+              (distinct)
               (sort-by form-sort-key)
               (vec))))
 
@@ -142,26 +143,31 @@
   (get-sample-lemmata "ADJ"))
 
 (defn clear-forms!
-  [id]
+  [token id]
   (let [form-ids      (->> (env/api-request! {:action "wbgetentities" :ids [id]})
                            :body :entities vals first :forms (map :id))
         form-removals (into [] (map (fn [id] {:id id :remove ""}))
                             form-ids)]
     (when (seq form-removals)
-      (jr/with-login env/login
-        (env/api-request! {:action "wbeditentity"
-                           :bot    "true"
-                           :id     id
-                           :data   (jr.json/write-value {:forms form-removals})
-                           :token  (env/api-csrf-token)})))))
+      (env/api-request! {:action "wbeditentity"
+                         :bot    "true"
+                         :id     id
+                         :data   (jr.json/write-value {:forms form-removals})
+                         :token  token}))))
 
 (def sample-lemmata
   {"L343331" "altklug"
-   "L794501" "sprachmächtig" 
+   "L794501" "sprachmächtig"
    "L809299" "Kastengeist"
    "L861928" "Menschenfuß"
    "L757338" "entgegenrollen"
    "L810517" "vorbeijagen"})
+
+(defn clear!
+  []
+  (jr/with-login env/login
+    (let [token (env/api-csrf-token)]
+      (run! (partial clear-forms! token) (keys sample-lemmata)))))
 
 (defn import!
   [{:keys [offset dry-run?] :or {offset 0 dry-run? true}}]
@@ -185,4 +191,5 @@
 
 
 (comment
+  (clear!)
   (import! {:dry-run? false}))
