@@ -13,6 +13,7 @@
 (def grammatical-features
   [["Q179230"    "infinitive"]
    ["Q100952920" "zu infinitive"]
+   ["Q1317831"   "active"]
    ["Q682111"    "indicative"]
    ["Q55685962"  "subjunctive I"]
    ["Q54671845"  "subjunctive II"]
@@ -52,11 +53,11 @@
     (= "Pos" degree)     (conj "Q1931259" "Q3482678")
     (= "Comp" degree)    (conj "Q1931259" "Q14169499")
     (= "Sup" degree)     (conj "Q1931259" "Q1817208")
-    (= "Ind" mood)       (conj "Q682111")
+    (= "Ind" mood)       (conj "Q682111" "Q1317831")
     (= "Subj" mood)      (cond->
-                             (= "Pres" tense) (conj "Q55685962")
-                             (= "Past" tense) (conj "Q54671845"))
-    (= "Imp" mood)       (conj "Q22716")
+                             (= "Pres" tense) (conj "Q55685962" "Q1317831")
+                             (= "Past" tense) (conj "Q54671845" "Q1317831"))
+    (= "Imp" mood)       (conj "Q22716" "Q51929049" "Q1317831" "Q192613")
     (= "Part" nonfinite) (cond->
                              (= "Pres" tense) (conj "Q10345583")
                              (= "Perf" tense) (conj "Q12717679"))
