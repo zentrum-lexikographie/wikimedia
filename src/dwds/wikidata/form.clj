@@ -32,7 +32,8 @@
    ["Q51929074"  "third person"]
    ["Q22716"     "imperative"]
    ["Q10345583"  "present participle"]
-   ["Q12717679"  "past participle"]])
+   ["Q12717679"  "past participle"]
+   ["Q1931259"   "predicative"]])
 
 (def grammatical-feature-labels
   (into {} grammatical-features))
@@ -48,9 +49,9 @@
                          nonfinite inflected funct]}]
   (cond-> [inflected]
     (= "Inf" nonfinite)  (conj (if (= "Cl" funct) "Q100952920" "Q179230"))
-    (= "Pos" degree)     (conj "Q3482678")
-    (= "Comp" degree)    (conj "Q14169499")
-    (= "Sup" degree)     (conj "Q1817208")
+    (= "Pos" degree)     (conj "Q1931259" "Q3482678")
+    (= "Comp" degree)    (conj "Q1931259" "Q14169499")
+    (= "Sup" degree)     (conj "Q1931259" "Q1817208")
     (= "Ind" mood)       (conj "Q682111")
     (= "Subj" mood)      (cond->
                              (= "Pres" tense) (conj "Q55685962")
