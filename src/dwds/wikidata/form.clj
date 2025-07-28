@@ -119,16 +119,17 @@
    :claims              {}})
 
 (defn add-forms!
-  [csrf-token dry-run? {{:wikidata_lexeme/keys [id]} :wikidata
-                        forms                        :wikidata-forms
-                        :as                          lexeme}]
+  [summary csrf-token dry-run? {{:wikidata_lexeme/keys [id]} :wikidata
+                                forms                        :wikidata-forms
+                                :as                          lexeme}]
   (when-not dry-run?
-    (env/api-request! {:action "wbeditentity"
-                       :bot    "true"
-                       :id     id
-                       :data   (jr.json/write-value
-                                {:forms (into [] (map form-data) forms)})
-                       :token  csrf-token}))
+    (env/api-request! {:action  "wbeditentity"
+                       :bot     "true"
+                       :summary summary
+                       :id      id
+                       :data    (jr.json/write-value
+                                 {:forms (into [] (map form-data) forms)})
+                       :token   csrf-token}))
   lexeme)
 
 (defn get-sample-lemmata
@@ -145,17 +146,18 @@
   (get-sample-lemmata "ADJ"))
 
 (defn clear-forms!
-  [token id]
+  [summary token id]
   (let [form-ids      (->> (env/api-request! {:action "wbgetentities" :ids [id]})
                            :body :entities vals first :forms (map :id))
         form-removals (into [] (map (fn [id] {:id id :remove ""}))
                             form-ids)]
     (when (seq form-removals)
-      (env/api-request! {:action "wbeditentity"
-                         :bot    "true"
-                         :id     id
-                         :data   (jr.json/write-value {:forms form-removals})
-                         :token  token}))))
+      (env/api-request! {:action  "wbeditentity"
+                         :bot     "true"
+                         :summary summary
+                         :id      id
+                         :data    (jr.json/write-value {:forms form-removals})
+                         :token   token}))))
 
 (def sample-lemmata
   {"L343331" "altklug"
@@ -166,32 +168,35 @@
    "L810517" "vorbeijagen"})
 
 (defn clear!
-  []
+  [summary]
   (jr/with-login env/login
     (let [token (env/api-csrf-token)]
-      (run! (partial clear-forms! token) (keys sample-lemmata)))))
+      (run! (partial clear-forms! summary token) (keys sample-lemmata)))))
 
 (defn import!
-  [{:keys [offset dry-run?] :or {offset 0 dry-run? true}}]
-  (jr/with-login env/login
-    (db/query
-     (str "where wd.id is not null "
-          "and wd.lemma in "
-          "(" (str/join "," (map #(str "'" % "'") (vals sample-lemmata))) ")")
-     (comp
-      (remove with-wikidata-forms?)
-      (map assoc-wd-form-and-features)
-      (drop offset)
-      (map (partial add-forms! (env/api-csrf-token) dry-run?))
-      (map-indexed
-       (fn [i {[{:dwdsmor_index/keys [analysis pos]}] :dwdsmor
-               :keys                                  [wikidata-forms]}]
-         (log/debugf "%010d [%4s] [%02d] %s" (+ offset i) pos
-                     (count wikidata-forms) analysis)))
-      (map (constantly 1)))
-     + 0)))
+  ([opts]
+   (import! (env/edit-summary "Form Import") opts))
+  ([summary {:keys [offset dry-run?] :or {offset 0 dry-run? true}}]
+   (jr/with-login env/login
+     (db/query
+      (str "where wd.id is not null "
+           "and wd.lemma in "
+           "(" (str/join "," (map #(str "'" % "'") (vals sample-lemmata))) ")")
+      (comp
+       (remove with-wikidata-forms?)
+       (map assoc-wd-form-and-features)
+       (drop offset)
+       (map (partial add-forms! summary (env/api-csrf-token) dry-run?))
+       (map-indexed
+        (fn [i {[{:dwdsmor_index/keys [analysis pos]}] :dwdsmor
+                :keys                                  [wikidata-forms]}]
+          (log/debugf "%010d [%4s] [%02d] %s" (+ offset i) pos
+                      (count wikidata-forms) analysis)))
+       (map (constantly 1)))
+      + 0))))
 
 
 (comment
-  (clear!)
-  (import! {:dry-run? false}))
+  (let [summary (env/edit-summary "Sample Form Import")]
+    (clear! summary)
+    (import! summary {:dry-run? false})))

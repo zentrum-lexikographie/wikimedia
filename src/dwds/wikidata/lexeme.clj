@@ -104,28 +104,31 @@
   {:rate (float (/ 80 60))})
 
 (defn create-entity!
-  [csrf-token dry-run? lexeme]
+  [summary csrf-token dry-run? lexeme]
   (when-not dry-run?
     (dh/with-rate-limiter {:ratelimiter create-entity-rate-limiter}
-      (env/api-request! {:action "wbeditentity"
-                         :new    "lexeme"
-                         :bot    "true"
-                         :data   (jr.json/write-value (entity-data lexeme))
-                         :token  csrf-token})))
+      (env/api-request! {:action  "wbeditentity"
+                         :new     "lexeme"
+                         :bot     "true"
+                         :summary summary
+                         :data    (jr.json/write-value (entity-data lexeme))
+                         :token   csrf-token})))
   lexeme)
 
 (defn import!
-  [{:keys [offset dry-run?] :or {offset 0 dry-run? true}}]
-  (jr/with-login env/login
-    (db/query
-     "where wd.id is null"
-     (comp
-      (drop offset)
-      (map (partial create-entity! (env/api-csrf-token) dry-run?))
-      (map-indexed (fn [i {[{:dwdsmor_index/keys [analysis pos]}] :dwdsmor}]
-                     (log/debugf "%010d [%4s] %s" (+ i offset) pos analysis)))
-      (map (constantly 1)))
-     + 0)))
+  ([opts]
+   (import! (env/edit-summary "Lexeme Import") opts))
+  ([summary {:keys [offset dry-run?] :or {offset 0 dry-run? true}}]
+   (jr/with-login env/login
+     (db/query
+      "where wd.id is null"
+      (comp
+       (drop offset)
+       (map (partial create-entity! summary (env/api-csrf-token) dry-run?))
+       (map-indexed (fn [i {[{:dwdsmor_index/keys [analysis pos]}] :dwdsmor}]
+                      (log/debugf "%010d [%4s] %s" (+ i offset) pos analysis)))
+       (map (constantly 1)))
+      + 0))))
 
 (comment
   (import! {}))
