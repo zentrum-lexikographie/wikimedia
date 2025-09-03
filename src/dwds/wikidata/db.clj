@@ -1,11 +1,14 @@
 (ns dwds.wikidata.db
   (:require
+   [clojure.java.io :as io]
    [dwds.wikidata.dwdsmor :as dwdsmor]
    [dwds.wikidata.env :refer [db]]
    [julesratte.wikidata.lexemes :as jr.wd.lexemes]
    [next.jdbc :as jdbc]
    [next.jdbc.sql :as jdbc.sql]
-   [taoensso.timbre :as log]))
+   [taoensso.timbre :as log])
+  (:import
+   (java.util.zip GZIPInputStream)))
 
 (require 'next.jdbc.date-time)
 
@@ -136,8 +139,10 @@
 
 (defn build!
   [& _]
-  (with-open [r (jr.wd.lexemes/read-dump)]
-    (->> (jr.wd.lexemes/parse-dump r)
+  (with-open [dump (io/input-stream (io/file "latest-lexemes.json.gz"))
+              dump (GZIPInputStream. dump)
+              dump (io/reader dump)]
+    (->> (jr.wd.lexemes/parse-dump dump)
          (insert-wikidata-lexemes!)))
   (with-open [r (dwdsmor/index-reader)]
     (->> (dwdsmor/parse-index r)

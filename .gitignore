@@ -6,4 +6,5 @@
 
 *.temp
 
+latest-lexemes.json.gz
 lexemes.db

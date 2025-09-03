@@ -1,6 +1,5 @@
 (ns dwds.wikidata.form
   (:require
-   [clojure.string :as str]
    [dwds.wikidata.db :as db]
    [dwds.wikidata.env :as env]
    [julesratte.client :as jr]
@@ -176,16 +175,14 @@
 (defn import!
   ([opts]
    (import! (env/edit-summary "Form Import") opts))
-  ([summary {:keys [offset dry-run?] :or {offset 0 dry-run? true}}]
+  ([summary {:keys [offset limit dry-run?] :or {offset 0 limit 1000 dry-run? true}}]
    (jr/with-login env/login
      (db/query
-      (str "where wd.id is not null "
-           "and wd.lemma in "
-           "(" (str/join "," (map #(str "'" % "'") (vals sample-lemmata))) ")")
+      "where wd.id is not null"
       (comp
        (remove with-wikidata-forms?)
        (map assoc-wd-form-and-features)
-       (drop offset)
+       (drop offset) (take limit)
        (map (partial add-forms! summary (env/api-csrf-token) dry-run?))
        (map-indexed
         (fn [i {[{:dwdsmor_index/keys [analysis pos]}] :dwdsmor

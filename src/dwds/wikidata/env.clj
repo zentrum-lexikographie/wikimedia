@@ -1,6 +1,7 @@
 (ns dwds.wikidata.env
   (:require
    [clojure.string :as str]
+   [com.potetm.fusebox.rate-limit :as rl :refer [with-rate-limit]]
    [julesratte.client :as jr])
   (:import
    (io.github.cdimascio.dotenv Dotenv)))
@@ -24,11 +25,20 @@
 (def api-endpoint
   (jr/api-url "www.wikidata.org"))
 
-(def api-request!
-  (partial jr/request! api-endpoint))
+(def api-rate-limit
+  (rl/init {::rl/bucket-size     1
+            ::rl/period-ms       (long (/ 60000 80))
+            ::rl/wait-timeout-ms 10000}))
 
-(def api-csrf-token
-  (partial jr/csrf-token api-endpoint))
+(defn api-request!
+  [& args]
+  (with-rate-limit api-rate-limit
+    (apply jr/request! api-endpoint args)))
+
+(defn api-csrf-token
+  [& args]
+  (with-rate-limit api-rate-limit
+    (apply jr/csrf-token api-endpoint args)))
 
 (def login
   {:url      api-endpoint

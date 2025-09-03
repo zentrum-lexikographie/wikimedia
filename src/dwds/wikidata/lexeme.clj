@@ -1,6 +1,5 @@
 (ns dwds.wikidata.lexeme
   (:require
-   [diehard.core :as dh :refer [defratelimiter]]
    [dwds.wikidata.db :as db]
    [dwds.wikidata.env :as env]
    [julesratte.client :as jr]
@@ -56,7 +55,7 @@
 (defn dwds-lemma-id-statement
   [lemma]
   {:type       "statement"
-   :mainsnak   (lemma-id-snak lemma) })
+   :mainsnak   (lemma-id-snak lemma)})
 
 (defn plt-statement
   [refs]
@@ -99,20 +98,15 @@
                         (seq genera) (assoc :P5185 genera)
                         :always      (assoc :P9940 dwds-id))}))
 
-#_:clj-kondo/ignore
-(defratelimiter create-entity-rate-limiter
-  {:rate (float (/ 80 60))})
-
 (defn create-entity!
   [summary csrf-token dry-run? lexeme]
   (when-not dry-run?
-    (dh/with-rate-limiter {:ratelimiter create-entity-rate-limiter}
-      (env/api-request! {:action  "wbeditentity"
-                         :new     "lexeme"
-                         :bot     "true"
-                         :summary summary
-                         :data    (jr.json/write-value (entity-data lexeme))
-                         :token   csrf-token})))
+    (env/api-request! {:action  "wbeditentity"
+                       :new     "lexeme"
+                       :bot     "true"
+                       :summary summary
+                       :data    (jr.json/write-value (entity-data lexeme))
+                       :token   csrf-token}))
   lexeme)
 
 (defn import!

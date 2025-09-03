@@ -13,6 +13,7 @@ Configure credentials via `.env`:
 
 ## Build database
 
+    curl -O https://dumps.wikimedia.org/other/wikibase/wikidatawiki/latest-lexemes.json.gz
     clojure -X dwds.wikidata.db/build!
 
 ## Import missing lexemes
