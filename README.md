@@ -1,5 +1,7 @@
 # DWDS Donation to Wikidata
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.17431371.svg)](https://doi.org/10.5281/zenodo.17431371)
+
 To increase visibility of its lexical data and allow for linking with
 other lexical resources, the DWDS donates data about German lexemes to
 Wikidata.
