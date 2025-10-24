@@ -1,0 +1,16 @@
+cff-version: "1.2.0"
+title: "DWDS Donation to Wikidata"
+version: 1.0.0
+license: "GPL-3.0"
+type: software
+abstract: "To increase visibility of its lexical data and allow for linking with other lexical resources, the DWDS donates data about German lexemes to Wikidata"
+message: "If you use this software, please cite it as below."
+authors:
+  - given-names: Gregor
+    family-names: Middell
+    affiliation: Berlin-Brandenburg Academy of Sciences and Humanities
+    orcid: "https://orcid.org/0009-0000-9256-4687"
+keywords:
+  - wikidata
+  - lexemes
+  - german

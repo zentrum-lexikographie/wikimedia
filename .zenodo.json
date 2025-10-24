@@ -1,0 +1,20 @@
+{
+  "creators": [
+    {
+      "affiliation": "Berlin-Brandenburg Academy of Sciences and Humanities",
+      "name": "Middell, Gregor",
+      "orcid": "0009-0000-9256-4687"
+    }
+  ],
+  "description": "To increase visibility of its lexical data and allow for linking with other lexical resources, the DWDS donates data about German lexemes to Wikidata",
+  "keywords": [
+    "wikidata",
+    "lexemes",
+    "german"
+  ],
+  "license": {
+    "id": "GPL-3.0"
+  },
+  "title": "DWDS Donation to Wikidata",
+  "version": "1.0.0"
+}
