@@ -1,1 +1,1 @@
-((clojure-mode . ((cider-clojure-cli-global-options . "-A:dev/env:nextjournal/clerk"))))
+((clojure-mode . ((cider-clojure-cli-aliases . ":dev/env:nextjournal/clerk"))))

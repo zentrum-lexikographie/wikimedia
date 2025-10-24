@@ -1,6 +1,8 @@
-# Exporting Lexical Resources to WikiData
+# DWDS Donation to Wikidata
 
-_Data Exchange Routines between the ZDL and Wikimedia Projects_
+To increase visibility of its lexical data and allow for linking with
+other lexical resources, the DWDS donates data about German lexemes to
+Wikidata.
 
 ## Setup
 
@@ -11,16 +13,16 @@ Configure credentials via `.env`:
     # DwdsBot login password
     API_LOGIN_PASSWORD=…
 
-## Build database
+### Build lexeme
 
     curl -O https://dumps.wikimedia.org/other/wikibase/wikidatawiki/latest-lexemes.json.gz
     clojure -X dwds.wikidata.db/build!
 
-## Import missing lexemes
+### Import missing lexemes
 
     clojure -X dwds.wikidata.lexeme/import!
 
-## Import missing forms
+### Import missing forms
 
     clojure -X dwds.wikidata.form/import!
 

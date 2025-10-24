@@ -25,20 +25,14 @@
 (def api-endpoint
   (jr/api-url "www.wikidata.org"))
 
-(def api-rate-limit
-  (rl/init {::rl/bucket-size     1
-            ::rl/period-ms       (long (/ 60000 80))
-            ::rl/wait-timeout-ms 10000}))
+(def api-request!
+  (partial jr/request! api-endpoint))
 
-(defn api-request!
-  [& args]
-  (with-rate-limit api-rate-limit
-    (apply jr/request! api-endpoint args)))
+(def api-requests!
+  (partial jr/requests! api-endpoint))
 
-(defn api-csrf-token
-  [& args]
-  (with-rate-limit api-rate-limit
-    (apply jr/csrf-token api-endpoint args)))
+(def api-csrf-token
+  (partial jr/csrf-token api-endpoint))
 
 (def login
   {:url      api-endpoint
