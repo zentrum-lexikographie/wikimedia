@@ -44,7 +44,7 @@
     (remove (comp #{:other} :category))
     (map #(update % :title str/replace #"^Lexeme:" "")))
    (wd-requests!
-    {:list        #"usercontribs"
+    {:list        "usercontribs"
      :ucuser      "DwdsBot"
      :ucnamespace "146"
      :uclimit     "500"}
