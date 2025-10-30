@@ -15,7 +15,7 @@ Configure credentials via `.env`:
     # DwdsBot login password
     API_LOGIN_PASSWORD=…
 
-### Build lexeme
+### Build lexeme database
 
     curl -O https://dumps.wikimedia.org/other/wikibase/wikidatawiki/latest-lexemes.json.gz
     clojure -X dwds.wikidata.db/build!
@@ -27,6 +27,10 @@ Configure credentials via `.env`:
 ### Import missing forms
 
     clojure -X dwds.wikidata.form/import!
+
+### Report on contributed lexeme data
+
+    clojure -X 'dwds.wikidata.dwdsbot/edits->csv' >edits.csv
 
 ## License
 
