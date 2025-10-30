@@ -1,6 +1,6 @@
 cff-version: "1.2.0"
 title: "DWDS Donation to Wikidata"
-version: 1.0.0
+version: 1.1.1
 license: "GPL-3.0"
 type: software
 abstract: "To increase visibility of its lexical data and allow for linking with other lexical resources, the DWDS donates data about German lexemes to Wikidata"
