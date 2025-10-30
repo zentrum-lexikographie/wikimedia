@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.1](https://github.com/zentrum-lexikographie/wikimedia/compare/v1.1.0...v1.1.1) (2025-10-30)
+
+
+### Bug Fixes
+
+* update citation data ([697076d](https://github.com/zentrum-lexikographie/wikimedia/commit/697076dd94bef6727aef9fcf191e012d3be2d193))
+
 ## [1.1.0](https://github.com/zentrum-lexikographie/wikimedia/compare/v1.0.0...v1.1.0) (2025-10-30)
 
 
